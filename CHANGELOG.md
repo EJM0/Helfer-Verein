@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - QR-Code für den öffentlichen Link mit dem Logo aus den Nextcloud-Design-Einstellungen in der Mitte, als PNG herunterladbar
 
+### Changed
+
+- Namens-Chips öffnen ihr Menü beim Klick auf den ganzen Chip, nicht nur auf die drei Punkte
+
 ## [1.5.0] - 2026-11-06
 
 ### Added

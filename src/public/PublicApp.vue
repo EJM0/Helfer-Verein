@@ -400,6 +400,7 @@ onMounted(load)
 						<div class="helfer-public__names">
 							<template v-for="signup in row.visible" :key="signup.id">
 								<NcChip v-if="ownById.has(signup.id)"
+									class="helfer-chip-menu"
 									:text="nameOf(signup) ?? ''"
 									variant="primary"
 									no-close>

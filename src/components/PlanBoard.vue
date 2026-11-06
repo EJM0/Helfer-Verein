@@ -80,7 +80,7 @@ function rows(shift: Shift) {
 						</div>
 						<ul class="plan__people">
 							<li v-for="signup in row.signups" :key="signup.id">
-								<NcChip :text="signup.name + (signup.role ? ' · ' + signup.role : '')" no-close>
+								<NcChip class="helfer-chip-menu" :text="signup.name + (signup.role ? ' · ' + signup.role : '')" no-close>
 									<template #actions>
 										<NcActionButton close-after-click @click="editor.edit(signup)">
 											<template #icon>

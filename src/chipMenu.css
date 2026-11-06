@@ -1,0 +1,22 @@
+/* The whole chip opens its menu, not only the three dots. */
+.nc-chip.helfer-chip-menu {
+	position: relative;
+}
+
+.nc-chip.helfer-chip-menu .nc-chip__actions {
+	position: static;
+}
+
+.nc-chip.helfer-chip-menu .nc-chip__actions .button-vue {
+	position: absolute;
+	inset: 0;
+	/* NcButton sizes icon-only buttons with this variable, and forces it with !important. */
+	--button-size: 100%;
+	--button-inner-size: var(--chip-size);
+	padding-inline: 0;
+	color: inherit;
+}
+
+.nc-chip.helfer-chip-menu .nc-chip__actions .button-vue__wrapper {
+	justify-content: flex-end;
+}
