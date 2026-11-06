@@ -30,6 +30,7 @@ export {
 	mdiGift,
 	mdiHandHeart,
 	mdiShareVariant,
+	mdiAccountRemove,
 	mdiAccountMultipleOutline,
 	mdiInformationOutline,
 	mdiNoteTextOutline,

@@ -71,6 +71,9 @@ export const adminApi = {
 	async addShare(id: number, type: string, shareWith: string): Promise<FullEvent> {
 		return (await axios.post(base(`/api/events/${id}/shares`), { type, shareWith })).data
 	},
+	async leaveShare(id: number): Promise<void> {
+		await axios.delete(base(`/api/events/${id}/shares/me`))
+	},
 	async removeShare(id: number, shareId: number): Promise<FullEvent> {
 		return (await axios.delete(base(`/api/events/${id}/shares/${shareId}`))).data
 	},

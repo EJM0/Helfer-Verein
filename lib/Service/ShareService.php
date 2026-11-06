@@ -71,6 +71,13 @@ class ShareService {
 		if ($this->shares->findOne($event->getId(), $shareType, $shareWith) !== null) {
 			throw new ValidationException($this->l->t('Die Umfrage ist bereits damit geteilt.'));
 		}
+		if ($shareType === Share::TYPE_USER) {
+			// Sharing directly again brings back somebody who left earlier.
+			$left = $this->shares->findOne($event->getId(), Share::TYPE_EXCLUDED_USER, $shareWith);
+			if ($left !== null) {
+				$this->shares->delete($left);
+			}
+		}
 		$share = new Share();
 		$share->setEventId($event->getId());
 		$share->setShareType($shareType);
@@ -94,6 +101,37 @@ class ShareService {
 		}
 		$this->shares->delete($share);
 		$this->dismissNotifications($event, $share);
+	}
+
+	/**
+	 * A shared user removes themselves from a survey: the direct share is deleted and,
+	 * if access remains through a group, the user is excluded from it.
+	 *
+	 * @throws ValidationException
+	 */
+	public function leave(Event $event, string $uid): void {
+		if ($event->getOwnerUid() === $uid) {
+			throw new ValidationException($this->l->t('Als Besitzer kannst du die Umfrage nicht verlassen.'));
+		}
+		$direct = $this->shares->findOne($event->getId(), Share::TYPE_USER, $uid);
+		if ($direct !== null) {
+			$this->shares->delete($direct);
+			$this->dismissNotifications($event, $direct);
+		}
+		$user = $this->userManager->get($uid);
+		$groupIds = $user !== null ? array_values(array_map('strval', $this->groupManager->getUserGroupIds($user))) : [];
+		if (in_array($event->getId(), $this->shares->findEventIdsFor($uid, $groupIds), true)) {
+			$excluded = new Share();
+			$excluded->setEventId($event->getId());
+			$excluded->setShareType(Share::TYPE_EXCLUDED_USER);
+			$excluded->setShareWith($uid);
+			$excluded->setCreatedBy($uid);
+			$excluded->setCreatedAt($this->time->getTime());
+			$this->shares->insert($excluded);
+			$notification = $this->notificationManager->createNotification();
+			$notification->setApp(Application::APP_ID)->setUser($uid)->setObject('event', (string)$event->getId());
+			$this->notificationManager->markProcessed($notification);
+		}
 	}
 
 	public function removeGroup(string $gid): void {

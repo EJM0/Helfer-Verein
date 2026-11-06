@@ -30,6 +30,7 @@ class ShareMapper extends QBMapper {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('*')->from($this->getTableName())
 			->where($qb->expr()->eq('event_id', $qb->createNamedParameter($eventId, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->neq('share_type', $qb->createNamedParameter(Share::TYPE_EXCLUDED_USER, IQueryBuilder::PARAM_INT)))
 			->orderBy('share_type')->addOrderBy('share_with');
 		return $this->findEntities($qb);
 	}
@@ -69,7 +70,22 @@ class ShareMapper extends QBMapper {
 			$ids[] = (int)$row['event_id'];
 		}
 		$result->closeCursor();
-		return $ids;
+		if ($ids === []) {
+			return [];
+		}
+
+		// Surveys the user left although a group they are in still has access.
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('event_id')->from($this->getTableName())
+			->where($qb->expr()->eq('share_type', $qb->createNamedParameter(Share::TYPE_EXCLUDED_USER, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('share_with', $qb->createNamedParameter($uid)));
+		$result = $qb->executeQuery();
+		$excluded = [];
+		while (($row = $result->fetch()) !== false) {
+			$excluded[] = (int)$row['event_id'];
+		}
+		$result->closeCursor();
+		return array_values(array_diff($ids, $excluded));
 	}
 
 	public function deleteByEvent(int $eventId): void {

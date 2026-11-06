@@ -199,6 +199,7 @@ class EventService {
 			$this->delete($event);
 		}
 		$this->shares->deleteByShareWith(\OCA\Helfer\Db\Share::TYPE_USER, $uid);
+		$this->shares->deleteByShareWith(\OCA\Helfer\Db\Share::TYPE_EXCLUDED_USER, $uid);
 	}
 
 	/** Create a copy of the event structure (without helpers). */

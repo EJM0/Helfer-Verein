@@ -274,6 +274,17 @@ class EventController extends Controller {
 		});
 	}
 
+	/** A shared user removes themselves from the survey. */
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'DELETE', url: '/api/events/{id}/shares/me', requirements: ['id' => '\d+'])]
+	public function leaveShare(int $id): JSONResponse {
+		return $this->handle(function () use ($id) {
+			$event = $this->events->getForUser($id, $this->uid());
+			$this->shares->leave($event, $this->uid());
+			return ['status' => 'ok'];
+		});
+	}
+
 	#[NoAdminRequired]
 	#[FrontpageRoute(verb: 'DELETE', url: '/api/events/{id}/shares/{shareId}', requirements: ['id' => '\d+', 'shareId' => '\d+'])]
 	public function removeShare(int $id, int $shareId): JSONResponse {

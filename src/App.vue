@@ -18,7 +18,7 @@ import CreateDialog from './components/CreateDialog.vue'
 import { adminApi, errorMessage } from './api.ts'
 import { confirmAction } from './confirm.ts'
 import type { FullEvent, HelferEvent } from './types.ts'
-import { mdiHandHeart, mdiShareVariant, mdiClipboardTextOutline, mdiDelete, mdiLockOutline, mdiPlus, mdiContentCopy } from './icons.ts'
+import { mdiHandHeart, mdiShareVariant, mdiAccountRemove, mdiClipboardTextOutline, mdiDelete, mdiLockOutline, mdiPlus, mdiContentCopy } from './icons.ts'
 
 const events = ref<HelferEvent[]>([])
 const loading = ref(true)
@@ -109,6 +109,31 @@ async function remove(event: HelferEvent) {
 	}
 }
 
+/**
+ * A shared user removes themselves from a survey.
+ * @param event
+ */
+async function leave(event: HelferEvent) {
+	if (!await confirmAction(
+		t('helfer', 'Umfrage verlassen'),
+		t('helfer', 'Möchtest du dich aus der geteilten Umfrage „{title}“ entfernen? Sie verschwindet dann aus deiner Liste. {owner} kann sie dir jederzeit wieder freigeben.', { title: event.title, owner: event.owner?.displayName ?? '' }),
+		t('helfer', 'Entfernen'),
+	)) {
+		return
+	}
+	try {
+		await adminApi.leaveShare(event.id)
+		events.value = events.value.filter((e) => e.id !== event.id)
+		if (currentId.value === event.id) {
+			current.value = null
+			window.location.hash = ''
+		}
+		showSuccess(t('helfer', 'Du wurdest aus „{title}“ entfernt.', { title: event.title }))
+	} catch (e) {
+		showError(errorMessage(e, t('helfer', 'Entfernen fehlgeschlagen.')))
+	}
+}
+
 onMounted(async () => {
 	await loadList()
 	const match = window.location.hash.match(/^#\/umfrage\/(\d+)/)
@@ -149,6 +174,12 @@ onMounted(async () => {
 							</template>
 							{{ t('helfer', 'Kopieren') }}
 						</NcActionButton>
+						<NcActionButton v-if="event.isOwner === false" close-after-click @click="leave(event)">
+							<template #icon>
+								<NcIconSvgWrapper :path="mdiAccountRemove" />
+							</template>
+							{{ t('helfer', 'Mich entfernen') }}
+						</NcActionButton>
 						<NcActionButton v-if="event.isOwner !== false" close-after-click @click="remove(event)">
 							<template #icon>
 								<NcIconSvgWrapper :path="mdiDelete" />
@@ -167,7 +198,8 @@ onMounted(async () => {
 			<EventView v-else-if="current"
 				:key="current.event.id"
 				:data="current"
-				@update="onUpdated" />
+				@update="onUpdated"
+				@leave="leave({ ...current.event, owner: current.owner })" />
 			<NcEmptyContent v-else-if="!loading"
 				:name="t('helfer', 'Noch keine Umfrage')"
 				:description="t('helfer', 'Lege eine Umfrage für deine Veranstaltung an, plane Schichten und Stände und teile den Link mit deinen Helfern.')">

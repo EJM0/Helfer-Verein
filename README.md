@@ -48,6 +48,8 @@ ganz ohne Nextcloud-Konto.
   **außer dem Export-Pfad** – der liegt in den Dateien des Besitzers. Sie können aber jederzeit in
   ihre eigenen Dateien exportieren oder herunterladen
 - Löschen der Umfrage und Teilen bleiben dem Besitzer vorbehalten
+- Geteilte Personen können sich selbst wieder aus einer Umfrage **entfernen** („Mich entfernen“) –
+  bei Zugriff über eine Gruppe wird nur die eigene Person ausgenommen, die Gruppe behält den Zugriff
 - Neue Freigaben erscheinen als Nextcloud-Benachrichtigung
 
 **Termine**

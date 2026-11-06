@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
+import { getCurrentUser } from '@nextcloud/auth'
 import { t } from '@nextcloud/l10n'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -10,10 +11,15 @@ import NcSelect from '@nextcloud/vue/components/NcSelect'
 import { adminApi, errorMessage } from '../api.ts'
 import { confirmAction } from '../confirm.ts'
 import type { FullEvent, ShareEntry, Sharee } from '../types.ts'
-import { mdiAccountMultipleOutline, mdiClose } from '../icons.ts'
+import { mdiAccountMultipleOutline, mdiAccountRemove, mdiClose } from '../icons.ts'
 
 const props = defineProps<{ data: FullEvent }>()
-const emit = defineEmits<{ update: [data: FullEvent] }>()
+const emit = defineEmits<{ update: [data: FullEvent], leave: [] }>()
+
+const currentUid = getCurrentUser()?.uid ?? null
+const isMe = (share: ShareEntry) => share.type === 'user' && share.shareWith === currentUid
+/** Access only through a group: the user is not listed themselves. */
+const viaGroupOnly = computed(() => !props.data.isOwner && !props.data.shares.some(isMe))
 
 interface Option extends Sharee {
 	id: string
@@ -81,7 +87,18 @@ async function remove(share: ShareEntry) {
 		</NcNoteCard>
 		<NcNoteCard v-else type="info">
 			{{ t('helfer', '{owner} hat diese Umfrage mit dir geteilt. Du kannst alles bearbeiten außer dem Export-Pfad.', { owner: data.owner.displayName }) }}
+			<template v-if="viaGroupOnly">
+				{{ t('helfer', 'Du hast Zugriff über eine Gruppe.') }}
+			</template>
 		</NcNoteCard>
+		<div v-if="viaGroupOnly" class="share-panel__leave">
+			<NcButton variant="error" @click="emit('leave')">
+				<template #icon>
+					<NcIconSvgWrapper :path="mdiAccountRemove" />
+				</template>
+				{{ t('helfer', 'Mich aus der Umfrage entfernen') }}
+			</NcButton>
+		</div>
 
 		<NcSelect v-if="data.isOwner"
 			v-model="selected"
@@ -100,7 +117,7 @@ async function remove(share: ShareEntry) {
 				<span class="share-panel__name">{{ data.owner.displayName }}</span>
 				<span class="share-panel__role">{{ t('helfer', 'Besitzer') }}</span>
 			</li>
-			<li v-for="share in data.shares" :key="share.id">
+			<li v-for="share in data.shares" :key="share.id" :class="{ 'share-panel__me': isMe(share) }">
 				<NcAvatar v-if="share.type === 'user'"
 					:user="share.shareWith"
 					:display-name="share.displayName"
@@ -111,8 +128,18 @@ async function remove(share: ShareEntry) {
 				<span class="share-panel__name">
 					{{ share.displayName }}
 					<template v-if="share.type === 'group'"> ({{ t('helfer', 'Gruppe') }})</template>
+					<template v-if="isMe(share)"> ({{ t('helfer', 'du') }})</template>
 				</span>
 				<span class="share-panel__role">{{ t('helfer', 'Kann bearbeiten') }}</span>
+				<NcButton v-if="isMe(share) && !data.isOwner"
+					variant="error"
+					size="small"
+					@click="emit('leave')">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiAccountRemove" :size="18" />
+					</template>
+					{{ t('helfer', 'Mich entfernen') }}
+				</NcButton>
 				<NcButton v-if="data.isOwner"
 					variant="tertiary"
 					:aria-label="t('helfer', 'Freigabe entfernen')"
@@ -161,6 +188,14 @@ async function remove(share: ShareEntry) {
 
 .share-panel__name {
 	flex: 1;
+}
+
+.share-panel__me {
+	font-weight: bold;
+}
+
+.share-panel__leave {
+	display: flex;
 }
 
 .share-panel__role, .share-panel__empty {

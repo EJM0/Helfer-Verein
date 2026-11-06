@@ -29,7 +29,7 @@ import {
 } from '../icons.ts'
 
 const props = defineProps<{ data: FullEvent }>()
-const emit = defineEmits<{ update: [data: FullEvent] }>()
+const emit = defineEmits<{ update: [data: FullEvent], leave: [] }>()
 
 type Tab = 'plan' | 'structure' | 'helpers' | 'donations' | 'share' | 'settings'
 const tab = ref<Tab>(props.data.shifts.length === 0 || props.data.stations.length === 0 ? 'structure' : 'plan')
@@ -349,7 +349,10 @@ function openExportedFile() {
 		<StructureEditor v-else-if="tab === 'structure'" :data="data" @update="(d) => emit('update', d)" />
 		<HelperTable v-else-if="tab === 'helpers'" :data="data" @update="(d) => emit('update', d)" />
 		<DonationEditor v-else-if="tab === 'donations'" :data="data" @update="(d) => emit('update', d)" />
-		<SharePanel v-else-if="tab === 'share'" :data="data" @update="(d) => emit('update', d)" />
+		<SharePanel v-else-if="tab === 'share'"
+			:data="data"
+			@update="(d) => emit('update', d)"
+			@leave="emit('leave')" />
 		<form v-else class="event-view__settings" @submit.prevent="save">
 			<SettingsFields v-model="draft" full :export-locked-by="data.isOwner ? null : data.owner.displayName" />
 			<div class="event-view__save">

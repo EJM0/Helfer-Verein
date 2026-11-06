@@ -23,6 +23,8 @@ use OCP\AppFramework\Db\Entity;
 class Share extends Entity {
 	public const TYPE_USER = 0;
 	public const TYPE_GROUP = 1;
+	/** A user who left a survey they got via a group share. */
+	public const TYPE_EXCLUDED_USER = 2;
 
 	protected $eventId = 0;
 	protected $shareType = self::TYPE_USER;
