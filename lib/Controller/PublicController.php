@@ -53,7 +53,6 @@ class PublicController extends Controller {
 	private const DEVICE_COOKIE = 'helfer_device';
 
 	private ?string $deviceToken = null;
-	private bool $deviceTokenIsNew = false;
 
 	private function deviceToken(): string {
 		if ($this->deviceToken === null) {
@@ -62,7 +61,6 @@ class PublicController extends Controller {
 				$this->deviceToken = $cookie;
 			} else {
 				$this->deviceToken = $this->random->generate(40, ISecureRandom::CHAR_ALPHANUMERIC);
-				$this->deviceTokenIsNew = true;
 			}
 		}
 		return $this->deviceToken;
@@ -73,17 +71,15 @@ class PublicController extends Controller {
 	}
 
 	/**
+	 * Set (or renew) the device cookie: it is valid for one year after the last visit.
+	 *
 	 * @template T of Response
 	 * @param T $response
 	 * @return T
 	 */
 	private function withDeviceCookie(Response $response): Response {
-		$this->deviceToken();
-		if ($this->deviceTokenIsNew) {
-			$expires = $this->time->getDateTime('+1 year');
-			$response->addCookie(self::DEVICE_COOKIE, (string)$this->deviceToken, $expires, 'Lax');
-			$this->deviceTokenIsNew = false;
-		}
+		$expires = $this->time->getDateTime('+1 year');
+		$response->addCookie(self::DEVICE_COOKIE, $this->deviceToken(), $expires, 'Lax');
 		return $response;
 	}
 

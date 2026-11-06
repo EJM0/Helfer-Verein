@@ -34,7 +34,7 @@ ganz ohne Nextcloud-Konto.
 - **E-Mail-Adresse ist freiwillig** – kann pro Umfrage als Pflichtfeld eingestellt werden
 - Alles, was von diesem Gerät eingetragen wurde, kann bis zum Enddatum wieder ausgetragen werden –
   auch nach Neuladen oder Browser-Neustart: ein technisch notwendiges Cookie (`helfer_device`, HttpOnly,
-  1 Jahr gültig) erkennt das Gerät wieder; zusätzlich merkt sich der Browser die Einträge lokal
+  gültig 1 Jahr ab dem letzten Besuch) erkennt das Gerät wieder; zusätzlich merkt sich der Browser die Einträge lokal
 - **Kalender-Import**: jede Schicht einzeln oder alle eigenen Schichten auf einmal als `.ics`-Datei
   (funktioniert mit Nextcloud Kalender, Google, Apple, Outlook, Thunderbird), inkl. Erinnerung 1 Stunde vorher
 - Namen der Helfer optional sichtbar

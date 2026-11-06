@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Anmeldeschluss: eigenes Datum, bis wann Helfer sich eintragen/austragen können
 - Automatischer Export bei Änderungen (höchstens alle 15 Minuten, abschaltbar), zusätzlich zum endgültigen Export nach dem Enddatum
 
+### Changed
+
+- Geräte-Cookie wird bei jedem Besuch der Helferseite verlängert (gültig 1 Jahr ab dem letzten Besuch)
+
 ### Fixed
 
 - Endgültiger Export nach dem Enddatum findet auch statt, wenn vorher schon (manuell) exportiert wurde
