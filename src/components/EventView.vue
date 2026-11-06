@@ -15,6 +15,7 @@ import StructureEditor from './StructureEditor.vue'
 import HelperTable from './HelperTable.vue'
 import DonationEditor from './DonationEditor.vue'
 import SharePanel from './SharePanel.vue'
+import QrCodeDialog from './QrCodeDialog.vue'
 import SettingsFields from './SettingsFields.vue'
 import { draftFromEvent, draftToPayload } from './draft.ts'
 import { adminApi, errorMessage } from '../api.ts'
@@ -24,7 +25,7 @@ import { formatDateTime } from '../time.ts'
 import type { FullEvent } from '../types.ts'
 import {
 	mdiAccountGroup, mdiCalendarClock, mdiCalendarExport, mdiGift, mdiShareVariant, mdiCog, mdiContentCopy, mdiDownload, mdiFolderOutline, mdiLinkVariant,
-	mdiLinkVariantOff, mdiOpenInNew, mdiRefresh, mdiTableArrowRight, mdiStorefrontOutline,
+	mdiLinkVariantOff, mdiOpenInNew, mdiQrcode, mdiRefresh, mdiTableArrowRight, mdiStorefrontOutline,
 } from '../icons.ts'
 
 const props = defineProps<{ data: FullEvent }>()
@@ -38,6 +39,7 @@ const tz = computed(() => event.value.timezone)
 const draft = ref(draftFromEvent(props.data.event))
 const saving = ref(false)
 const exporting = ref(false)
+const qrOpen = ref(false)
 watch(() => props.data.event.updatedAt, () => {
 	if (!saving.value) {
 		draft.value = draftFromEvent(props.data.event)
@@ -240,6 +242,12 @@ function openExportedFile() {
 					</template>
 					{{ t('helfer', 'Link kopieren') }}
 				</NcButton>
+				<NcButton @click="qrOpen = true">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiQrcode" />
+					</template>
+					{{ t('helfer', 'QR-Code') }}
+				</NcButton>
 				<NcActions>
 					<NcActionButton close-after-click @click="openPublic">
 						<template #icon>
@@ -260,6 +268,10 @@ function openExportedFile() {
 						{{ t('helfer', 'Link löschen') }}
 					</NcActionButton>
 				</NcActions>
+				<QrCodeDialog v-if="qrOpen"
+					:url="data.publicUrl"
+					:title="event.title"
+					@close="qrOpen = false" />
 			</template>
 			<template v-else>
 				<NcIconSvgWrapper :path="mdiLinkVariantOff" />

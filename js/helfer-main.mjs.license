@@ -1,5 +1,6 @@
 SPDX-License-Identifier: AGPL-3.0-or-later
 SPDX-License-Identifier: MIT
+SPDX-FileCopyrightText: Anthony Fu <anthonyfu117@hotmail.com>
 SPDX-FileCopyrightText: Antoni Andre <antoniandre.web@gmail.com>
 SPDX-FileCopyrightText: Eric Norris (https://github.com/ericnorris)
 SPDX-FileCopyrightText: Eugene Sharygin <eush77@gmail.com>
@@ -17,7 +18,7 @@ This file is generated from multiple sources. Included packages:
 	- version: 15.0.0
 	- license: MIT
 - helfer
-	- version: 1.4.0
+	- version: 1.6.0
 	- license: AGPL-3.0-or-later
 - splitpanes
 	- version: 4.1.2
@@ -36,4 +37,7 @@ This file is generated from multiple sources. Included packages:
 	- license: MIT
 - unist-util-visit-parents
 	- version: 6.1.0
+	- license: MIT
+- uqr
+	- version: 0.1.3
 	- license: MIT

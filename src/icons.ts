@@ -16,6 +16,7 @@ export {
 	mdiMapMarker,
 	mdiPencil,
 	mdiPlus,
+	mdiQrcode,
 	mdiRefresh,
 	mdiTableArrowRight,
 	mdiAccount,

@@ -16,6 +16,7 @@ ganz ohne Nextcloud-Konto.
 - **Helferliste** nach Einsätzen oder Personen inkl. Stundensumme
 - **Spendenlisten** anlegen und Einträge bearbeiten (Tab „Spenden“)
 - Alle Schichten als Kalenderdatei (`.ics`) herunterladen
+- Öffentlichen Link als **QR-Code** mit Vereinslogo in der Mitte anzeigen und als PNG herunterladen
 - Oberfläche komplett mit den Nextcloud-Komponenten ([@nextcloud/vue](https://github.com/nextcloud-libraries/nextcloud-vue)),
   passt sich Design, Dark Mode und Barrierefreiheit von Nextcloud an
 
