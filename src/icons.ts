@@ -26,4 +26,9 @@ export {
 	mdiCalendarPlus,
 	mdiCalendarExport,
 	mdiClose,
+	mdiGift,
+	mdiInformationOutline,
+	mdiNoteTextOutline,
+	mdiFilterVariant,
+	mdiCalendar,
 } from '@mdi/js'

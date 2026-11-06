@@ -12,16 +12,19 @@ import NcChip from '@nextcloud/vue/components/NcChip'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 import SlotSignupForm from './SlotSignupForm.vue'
+import DonationListCard from './DonationListCard.vue'
 import { errorMessage, publicApi } from '../api.ts'
 import { confirmAction } from '../confirm.ts'
 import { dayKey, formatDateTime, formatDay, formatRange } from '../time.ts'
-import type { PublicData, Shift, Signup } from '../types.ts'
-import { loadOwn, loadPeople, rememberPerson, saveOwn, type OwnSignup, type Person } from './storage.ts'
+import type { Donation, PublicData, Shift, Signup } from '../types.ts'
+import { loadOwn, loadOwnDonations, loadPeople, rememberPerson, saveOwn, saveOwnDonations, type OwnDonation, type OwnSignup, type Person } from './storage.ts'
 import {
 	mdiAccount, mdiAccountPlus, mdiCalendarExport, mdiCalendarPlus, mdiClipboardTextOutline, mdiClockOutline,
-	mdiClose, mdiMapMarker,
+	mdiCalendar, mdiClose, mdiMapMarker,
 } from '../icons.ts'
 
 const token = loadState<string>('helfer', 'token', '')
@@ -32,6 +35,9 @@ const submitting = ref(false)
 const openSlot = ref<number | null>(null)
 const own = ref<OwnSignup[]>(loadOwn(token))
 const people = ref<Person[]>(loadPeople())
+const ownDonations = ref<OwnDonation[]>(loadOwnDonations(token))
+const stationFilter = ref<{ id: number, label: string } | null>(null)
+const onlyFree = ref(false)
 
 const event = computed(() => data.value?.event)
 const tz = computed(() => event.value?.timezone)
@@ -83,7 +89,12 @@ function rows(shift: Shift) {
 			}
 		})
 		.filter((row): row is NonNullable<typeof row> => row !== null)
+		.filter((row) => !stationFilter.value || row.station.id === stationFilter.value.id)
+		.filter((row) => !onlyFree.value || row.free > 0)
 }
+
+const stationOptions = computed(() => (data.value?.stations ?? []).map((s) => ({ id: s.id, label: s.title })))
+const visibleDays = computed(() => days.value.filter((day) => day.shifts.some((shift) => rows(shift).length > 0)))
 
 const mine = computed(() => {
 	const d = data.value
@@ -116,6 +127,9 @@ const allMineCalendarUrl = computed(() => calendarUrl(mine.value.map((e) => ({ s
 
 function apply(result: PublicData) {
 	data.value = result
+	const existingDonations = new Set(result.donations.map((d) => d.id))
+	ownDonations.value = ownDonations.value.filter((o) => existingDonations.has(o.id))
+	saveOwnDonations(token, ownDonations.value)
 	// Forget own entries the organisers removed.
 	const existing = new Set(result.signups.map((s) => s.id))
 	own.value = own.value.filter((o) => existing.has(o.id))
@@ -178,6 +192,41 @@ async function cancel(signup: Signup) {
 	}
 }
 
+const donationCards = ref<InstanceType<typeof DonationListCard>[]>([])
+
+async function donate(payload: Record<string, unknown>) {
+	submitting.value = true
+	try {
+		const result = await publicApi.donate(token, payload)
+		const name = String(payload.name ?? '').trim()
+		if (result.editToken && result.created) {
+			ownDonations.value = [...ownDonations.value, ...result.created.map((id) => ({ id, editToken: result.editToken!, name }))]
+		}
+		people.value = rememberPerson({ name, email: String(payload.email ?? ''), phone: '', groupName: '' })
+		apply(result)
+		donationCards.value.forEach((card) => card.close())
+		showSuccess(t('helfer', 'Danke, {name}! „{item}“ ist eingetragen.', { name, item: String(payload.item ?? '') }))
+	} catch (e) {
+		showError(errorMessage(e, t('helfer', 'Eintragen fehlgeschlagen.')))
+	} finally {
+		submitting.value = false
+	}
+}
+
+async function cancelDonation(donation: Donation) {
+	const entry = ownDonations.value.find((o) => o.id === donation.id)
+	if (!entry || !await confirmAction(t('helfer', 'Spende austragen'), t('helfer', '„{item}“ wieder austragen?', { item: donation.item }), t('helfer', 'Austragen'))) {
+		return
+	}
+	try {
+		const result = await publicApi.cancelDonation(token, donation.id, entry.editToken)
+		ownDonations.value = ownDonations.value.filter((o) => o.id !== donation.id)
+		apply(result)
+	} catch (e) {
+		showError(errorMessage(e, t('helfer', 'Austragen fehlgeschlagen.')))
+	}
+}
+
 onMounted(load)
 </script>
 
@@ -199,15 +248,12 @@ onMounted(load)
 		<template v-else>
 			<header class="helfer-public__card">
 				<h2>{{ event.title }}</h2>
-				<p v-if="event.description" class="helfer-public__description">
-					{{ event.description }}
-				</p>
 				<ul class="helfer-public__facts">
+					<li v-if="event.startDate">
+						<NcIconSvgWrapper :path="mdiCalendar" :size="18" /> {{ formatDateTime(event.startDate, tz) }}
+					</li>
 					<li v-if="event.location">
 						<NcIconSvgWrapper :path="mdiMapMarker" :size="18" /> {{ event.location }}
-					</li>
-					<li v-if="event.contact">
-						<NcIconSvgWrapper :path="mdiAccount" :size="18" /> {{ event.contact }}
 					</li>
 					<li v-if="event.endDate && writable">
 						<NcIconSvgWrapper :path="mdiClockOutline" :size="18" />
@@ -218,6 +264,31 @@ onMounted(load)
 					{{ t('helfer', 'Klicke in einer Schicht auf „Eintragen“ und gib deinen Namen ein. Du kannst auch andere Personen mit eintragen.') }}
 				</p>
 			</header>
+
+			<section v-if="event.organizer || event.contact || event.contactEmail || event.description" class="helfer-public__card helfer-public__info">
+				<template v-if="event.organizer || event.contact || event.contactEmail">
+					<h3>{{ t('helfer', 'Information') }}</h3>
+					<p v-if="event.organizer">
+						{{ t('helfer', 'Veranstalter: {organizer}', { organizer: event.organizer }) }}
+					</p>
+					<p v-if="event.contact || event.contactEmail" class="helfer-public__contact">
+						<NcIconSvgWrapper :path="mdiAccount" :size="18" />
+						<span>
+							{{ event.contact }}
+							<a v-if="event.contactEmail" :href="`mailto:${event.contactEmail}`">
+								<template v-if="event.contact">({{ event.contactEmail }})</template>
+								<template v-else>{{ event.contactEmail }}</template>
+							</a>
+						</span>
+					</p>
+				</template>
+				<template v-if="event.description">
+					<h3>{{ t('helfer', 'Bemerkungen') }}</h3>
+					<p class="helfer-public__description">
+						{{ event.description }}
+					</p>
+				</template>
+			</section>
 
 			<NcNoteCard v-if="event.closed" type="error" :text="t('helfer', 'Diese Umfrage ist geschlossen.')" />
 			<NcNoteCard v-else-if="event.ended" type="warning" :text="t('helfer', 'Die Veranstaltung ist beendet. Eintragungen und Änderungen sind nicht mehr möglich. Bei Fragen wende dich bitte an die Organisatoren.')" />
@@ -256,7 +327,32 @@ onMounted(load)
 				</ul>
 			</section>
 
-			<section v-for="day in days" :key="day.key" class="helfer-public__day">
+			<div v-for="list in data.donationLists" :key="list.id" class="helfer-public__card">
+				<DonationListCard ref="donationCards"
+					:list="list"
+					:donations="data.donations.filter((d) => d.listId === list.id)"
+					:own="ownDonations"
+					:event="event"
+					:writable="writable"
+					:submitting="submitting"
+					:people="people"
+					@submit="donate"
+					@cancel="cancelDonation" />
+			</div>
+
+			<section v-if="data.stations.length > 1 || writable" class="helfer-public__card helfer-public__filter">
+				<h3>{{ t('helfer', 'Filter') }}</h3>
+				<NcSelect v-if="data.stations.length > 1"
+					v-model="stationFilter"
+					:options="stationOptions"
+					:input-label="t('helfer', 'Stand / Aufgabe')"
+					:placeholder="t('helfer', 'Alle Stände')" />
+				<NcCheckboxRadioSwitch v-if="writable" v-model="onlyFree" type="switch">
+					{{ t('helfer', 'Nur freie Plätze anzeigen') }}
+				</NcCheckboxRadioSwitch>
+			</section>
+
+			<section v-for="day in visibleDays" :key="day.key" class="helfer-public__day">
 				<h3>{{ day.label }}</h3>
 				<article v-for="shift in day.shifts"
 					v-show="rows(shift).length > 0"
@@ -330,6 +426,9 @@ onMounted(load)
 			<p v-if="days.length === 0" class="helfer-public__card">
 				{{ t('helfer', 'Es wurden noch keine Schichten eingetragen.') }}
 			</p>
+			<p v-else-if="visibleDays.length === 0" class="helfer-public__card">
+				{{ t('helfer', 'Keine passenden Schichten gefunden.') }}
+			</p>
 		</template>
 	</div>
 </template>
@@ -386,6 +485,35 @@ onMounted(load)
 
 .helfer-public__description {
 	white-space: pre-wrap;
+	margin: 0;
+}
+
+.helfer-public__info, .helfer-public__filter {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.helfer-public__info h3, .helfer-public__filter h3 {
+	color: var(--color-primary-element);
+}
+
+.helfer-public__info h3:not(:first-child) {
+	margin-top: 12px;
+}
+
+.helfer-public__info p {
+	margin: 0;
+}
+
+.helfer-public__contact {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.helfer-public__contact a {
+	text-decoration: underline;
 }
 
 .helfer-public__facts {

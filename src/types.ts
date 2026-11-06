@@ -11,6 +11,9 @@ export interface HelferEvent {
 	description: string
 	location: string
 	contact: string
+	contactEmail: string
+	organizer: string
+	startDate: number | null
 	token: string | null
 	timezone: string
 	endDate: number | null
@@ -74,16 +77,37 @@ export interface Signup {
 	createdAt?: number
 }
 
+export interface DonationList {
+	id: number
+	eventId: number
+	title: string
+	description: string
+	needed: number | null
+	sort: number
+}
+
+export interface Donation {
+	id: number
+	listId: number
+	item: string
+	name: string | null
+	email?: string
+	comment?: string
+	createdBy?: string | null
+}
+
 export interface FullEvent {
 	event: HelferEvent
 	shifts: Shift[]
 	stations: Station[]
 	slots: Slot[]
 	signups: Signup[]
+	donationLists: DonationList[]
+	donations: Donation[]
 	publicUrl: string | null
 }
 
-export type PublicEvent = Pick<HelferEvent, 'title' | 'description' | 'location' | 'contact' | 'timezone' | 'endDate'
+export type PublicEvent = Pick<HelferEvent, 'title' | 'description' | 'location' | 'contact' | 'contactEmail' | 'organizer' | 'startDate' | 'timezone' | 'endDate'
 	| 'closeDate' | 'ended' | 'closed' | 'askEmail' | 'emailRequired' | 'askPhone' | 'askGroup' | 'groupOptions' | 'questions' | 'publicNames'>
 
 export interface PublicData {
@@ -92,6 +116,8 @@ export interface PublicData {
 	stations: Station[]
 	slots: Slot[]
 	signups: Signup[]
+	donationLists: DonationList[]
+	donations: Donation[]
 	editToken?: string
 	created?: number[]
 }

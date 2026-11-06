@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace OCA\Helfer\Service;
 
 use DateTimeZone;
+use OCA\Helfer\Db\DonationList;
+use OCA\Helfer\Db\DonationListMapper;
+use OCA\Helfer\Db\DonationMapper;
 use OCA\Helfer\Db\Event;
 use OCA\Helfer\Db\EventMapper;
 use OCA\Helfer\Db\Shift;
@@ -31,6 +34,8 @@ class EventService {
 		private StationMapper $stations,
 		private SlotMapper $slots,
 		private SignupMapper $signups,
+		private DonationListMapper $donationLists,
+		private DonationMapper $donations,
 		private IRootFolder $rootFolder,
 		private ISecureRandom $random,
 		private ITimeFactory $time,
@@ -91,7 +96,7 @@ class EventService {
 	}
 
 	/**
-	 * @return array{event: Event, shifts: list<Shift>, stations: list<Station>, slots: list<Slot>, signups: list<Signup>}
+	 * @return array{event: Event, shifts: list<Shift>, stations: list<Station>, slots: list<Slot>, signups: list<Signup>, donationLists: list<DonationList>, donations: list<\OCA\Helfer\Db\Donation>}
 	 */
 	public function getFull(Event $event): array {
 		$id = $event->getId();
@@ -101,6 +106,8 @@ class EventService {
 			'stations' => $this->stations->findByEvent($id),
 			'slots' => $this->slots->findByEvent($id),
 			'signups' => $this->signups->findByEvent($id),
+			'donationLists' => $this->donationLists->findByEvent($id),
+			'donations' => $this->donations->findByEvent($id),
 		];
 	}
 
@@ -136,6 +143,8 @@ class EventService {
 		try {
 			$id = $event->getId();
 			$this->signups->deleteByEvent($id);
+			$this->donations->deleteByColumn('event_id', $id);
+			$this->donationLists->deleteByColumn('event_id', $id);
 			$this->slots->deleteByEvent($id);
 			$this->shifts->deleteByEvent($id);
 			$this->stations->deleteByEvent($id);
@@ -160,7 +169,7 @@ class EventService {
 		try {
 			$copy = new Event();
 			// Dates are not copied: they belong to the old event and would close the copy right away.
-			foreach (['title', 'description', 'location', 'contact', 'timezone', 'closeAction',
+			foreach (['title', 'description', 'location', 'contact', 'contactEmail', 'organizer', 'timezone', 'closeAction',
 				'exportFolder', 'askEmail', 'emailRequired', 'askPhone', 'askGroup', 'groupOptions', 'questions', 'publicNames'] as $field) {
 				$copy->{'set' . ucfirst($field)}($source->{'get' . ucfirst($field)}());
 			}
@@ -199,6 +208,15 @@ class EventService {
 				$new->setStationId($stationMap[$slot->getStationId()]);
 				$new->setNeeded($slot->getNeeded());
 				$this->slots->insert($new);
+			}
+			foreach ($this->donationLists->findByEvent($source->getId()) as $list) {
+				$new = new DonationList();
+				$new->setEventId($copy->getId());
+				$new->setTitle($list->getTitle());
+				$new->setDescription($list->getDescription());
+				$new->setNeeded($list->getNeeded());
+				$new->setSort($list->getSort());
+				$this->donationLists->insert($new);
 			}
 			$this->db->commit();
 			return $copy;
@@ -435,7 +453,7 @@ class EventService {
 			}
 			$event->setTitle($title);
 		}
-		foreach (['description' => 10000, 'location' => 255, 'contact' => 255] as $field => $max) {
+		foreach (['description' => 10000, 'location' => 255, 'contact' => 255, 'organizer' => 255] as $field => $max) {
 			if (array_key_exists($field, $data)) {
 				$event->{'set' . ucfirst($field)}($this->cleanString($data[$field], $max));
 			}
@@ -446,11 +464,25 @@ class EventService {
 			}
 			$event->setTimezone($data['timezone']);
 		}
+		if (array_key_exists('contactEmail', $data)) {
+			$email = $this->cleanString($data['contactEmail'], 255);
+			if ($email !== null && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+				throw new ValidationException($this->l->t('Die E-Mail-Adresse des Ansprechpartners ist ungültig.'));
+			}
+			$event->setContactEmail($email);
+		}
+		if (array_key_exists('startDate', $data)) {
+			$event->setStartDate($this->optionalTimestamp($data['startDate']));
+		}
 		if (array_key_exists('endDate', $data)) {
 			$event->setEndDate($this->optionalTimestamp($data['endDate']));
 		}
 		if (array_key_exists('closeDate', $data)) {
 			$event->setCloseDate($this->optionalTimestamp($data['closeDate']));
+		}
+		if ($event->getStartDate() !== null && $event->getEndDate() !== null
+			&& $event->getEndDate() < $event->getStartDate()) {
+			throw new ValidationException($this->l->t('Das Enddatum darf nicht vor dem Beginn der Veranstaltung liegen.'));
 		}
 		if ($event->getEndDate() !== null && $event->getCloseDate() !== null
 			&& $event->getCloseDate() < $event->getEndDate()) {

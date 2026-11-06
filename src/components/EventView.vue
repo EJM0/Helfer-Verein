@@ -13,6 +13,7 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import PlanBoard from './PlanBoard.vue'
 import StructureEditor from './StructureEditor.vue'
 import HelperTable from './HelperTable.vue'
+import DonationEditor from './DonationEditor.vue'
 import SettingsFields from './SettingsFields.vue'
 import { draftFromEvent, draftToPayload } from './draft.ts'
 import { adminApi, errorMessage } from '../api.ts'
@@ -21,14 +22,14 @@ import { confirmAction } from '../confirm.ts'
 import { formatDateTime } from '../time.ts'
 import type { FullEvent } from '../types.ts'
 import {
-	mdiAccountGroup, mdiCalendarClock, mdiCalendarExport, mdiCog, mdiContentCopy, mdiDownload, mdiFolderOutline, mdiLinkVariant,
+	mdiAccountGroup, mdiCalendarClock, mdiCalendarExport, mdiGift, mdiCog, mdiContentCopy, mdiDownload, mdiFolderOutline, mdiLinkVariant,
 	mdiLinkVariantOff, mdiOpenInNew, mdiRefresh, mdiTableArrowRight, mdiStorefrontOutline,
 } from '../icons.ts'
 
 const props = defineProps<{ data: FullEvent }>()
 const emit = defineEmits<{ update: [data: FullEvent] }>()
 
-type Tab = 'plan' | 'structure' | 'helpers' | 'settings'
+type Tab = 'plan' | 'structure' | 'helpers' | 'donations' | 'settings'
 const tab = ref<Tab>(props.data.shifts.length === 0 || props.data.stations.length === 0 ? 'structure' : 'plan')
 const event = computed(() => props.data.event)
 const tz = computed(() => event.value.timezone)
@@ -172,6 +173,7 @@ function openExportedFile() {
 						{{ t('helfer', '{have} von {needed} Plätzen belegt', { have: filled.have, needed: filled.needed }) }}
 						· {{ t('helfer', '{n} Eintragungen', { n: data.signups.length }) }}
 					</span>
+					<span v-if="event.startDate"> · {{ t('helfer', 'Beginn: {date}', { date: formatDateTime(event.startDate, tz) }) }}</span>
 					<span v-if="event.endDate"> · {{ t('helfer', 'Ende: {date}', { date: formatDateTime(event.endDate, tz) }) }}</span>
 					<span v-if="event.closeDate"> · {{ t('helfer', 'Schließung: {date}', { date: formatDateTime(event.closeDate, tz) }) }}</span>
 				</p>
@@ -287,6 +289,15 @@ function openExportedFile() {
 				</template>
 				{{ t('helfer', 'Helferliste') }}
 			</NcButton>
+			<NcButton :variant="tab === 'donations' ? 'primary' : 'tertiary'"
+				role="tab"
+				:aria-selected="tab === 'donations'"
+				@click="tab = 'donations'">
+				<template #icon>
+					<NcIconSvgWrapper :path="mdiGift" />
+				</template>
+				{{ t('helfer', 'Spenden') }}
+			</NcButton>
 			<NcButton :variant="tab === 'settings' ? 'primary' : 'tertiary'"
 				role="tab"
 				:aria-selected="tab === 'settings'"
@@ -304,6 +315,7 @@ function openExportedFile() {
 			@edit-structure="tab = 'structure'" />
 		<StructureEditor v-else-if="tab === 'structure'" :data="data" @update="(d) => emit('update', d)" />
 		<HelperTable v-else-if="tab === 'helpers'" :data="data" @update="(d) => emit('update', d)" />
+		<DonationEditor v-else-if="tab === 'donations'" :data="data" @update="(d) => emit('update', d)" />
 		<form v-else class="event-view__settings" @submit.prevent="save">
 			<SettingsFields v-model="draft" full />
 			<div class="event-view__save">

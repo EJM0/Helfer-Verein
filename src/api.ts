@@ -65,6 +65,24 @@ export const adminApi = {
 	async deleteSignup(id: number, signupId: number): Promise<FullEvent> {
 		return (await axios.delete(base(`/api/events/${id}/signups/${signupId}`))).data
 	},
+	async addDonationList(id: number, data: object): Promise<FullEvent> {
+		return (await axios.post(base(`/api/events/${id}/donation-lists`), data)).data
+	},
+	async updateDonationList(id: number, listId: number, data: object): Promise<FullEvent> {
+		return (await axios.put(base(`/api/events/${id}/donation-lists/${listId}`), data)).data
+	},
+	async deleteDonationList(id: number, listId: number): Promise<FullEvent> {
+		return (await axios.delete(base(`/api/events/${id}/donation-lists/${listId}`))).data
+	},
+	async addDonation(id: number, data: object): Promise<FullEvent> {
+		return (await axios.post(base(`/api/events/${id}/donations`), data)).data
+	},
+	async updateDonation(id: number, donationId: number, data: object): Promise<FullEvent> {
+		return (await axios.put(base(`/api/events/${id}/donations/${donationId}`), data)).data
+	},
+	async deleteDonation(id: number, donationId: number): Promise<FullEvent> {
+		return (await axios.delete(base(`/api/events/${id}/donations/${donationId}`))).data
+	},
 	async exportToFolder(id: number, folder?: string): Promise<FullEvent & { path: string }> {
 		return (await axios.post(base(`/api/events/${id}/export`), folder ? { folder } : {})).data
 	},
@@ -82,6 +100,12 @@ export const publicApi = {
 	},
 	async signup(token: string, data: object): Promise<PublicData> {
 		return (await axios.post(base(`/api/public/${encodeURIComponent(token)}/signups`), data)).data
+	},
+	async donate(token: string, data: object): Promise<PublicData> {
+		return (await axios.post(base(`/api/public/${encodeURIComponent(token)}/donations`), data)).data
+	},
+	async cancelDonation(token: string, donationId: number, editToken: string): Promise<PublicData> {
+		return (await axios.delete(base(`/api/public/${encodeURIComponent(token)}/donations/${donationId}`), { params: { editToken } })).data
 	},
 	async cancel(token: string, signupId: number, editToken: string): Promise<PublicData> {
 		return (await axios.delete(base(`/api/public/${encodeURIComponent(token)}/signups/${signupId}`), { params: { editToken } })).data

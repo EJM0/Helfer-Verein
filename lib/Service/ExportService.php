@@ -176,6 +176,32 @@ class ExportService {
 		$writer = new XlsxWriter();
 		$writer->addSheet($this->l->t('Helfer'), $helpers);
 		$writer->addSheet($this->l->t('Einsätze'), $assignments);
+		if ($full['donationLists'] !== []) {
+			$listTitles = [];
+			foreach ($full['donationLists'] as $list) {
+				$listTitles[$list->getId()] = $list->getTitle();
+			}
+			$donations = [[
+				$this->l->t('Liste'),
+				$this->l->t('Spende'),
+				$this->l->t('Name'),
+				$this->l->t('E-Mail'),
+				$this->l->t('Kommentar'),
+			]];
+			foreach ($full['donations'] as $donation) {
+				if (!isset($listTitles[$donation->getListId()])) {
+					continue;
+				}
+				$donations[] = [
+					$listTitles[$donation->getListId()],
+					$donation->getItem(),
+					$donation->getName(),
+					$donation->getEmail() ?? '',
+					$donation->getComment() ?? '',
+				];
+			}
+			$writer->addSheet($this->l->t('Spenden'), $donations);
+		}
 		$temp = $this->tempManager->getTemporaryFile('.xlsx');
 		if ($temp === false) {
 			throw new \RuntimeException('Could not create temporary file');

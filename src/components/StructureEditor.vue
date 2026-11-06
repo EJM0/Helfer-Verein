@@ -50,6 +50,9 @@ function newShift() {
 	if (last) {
 		const duration = last.endTime - last.startTime
 		shiftDialog.value = { shift: null, start: toDate(last.endTime), end: toDate(last.endTime + duration) }
+	} else if (props.data.event.startDate) {
+		const start = toDate(props.data.event.startDate)!
+		shiftDialog.value = { shift: null, start, end: new Date(start.getTime() + 2 * 3600 * 1000) }
 	} else {
 		const start = new Date()
 		start.setDate(start.getDate() + 7)

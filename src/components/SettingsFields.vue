@@ -15,6 +15,9 @@ export interface SettingsDraft {
 	description: string
 	location: string
 	contact: string
+	contactEmail: string
+	organizer: string
+	startDate: Date | null
 	endDate: Date | null
 	closeDate: Date | null
 	closeAction: 'close' | 'delete'
@@ -51,19 +54,27 @@ function removeQuestion(index: number) {
 	<div class="settings-fields">
 		<NcTextField v-model="draft.title" :label="t('helfer', 'Titel der Veranstaltung')" required />
 		<template v-if="props.full">
-			<NcTextArea v-model="draft.description" :label="t('helfer', 'Beschreibung / Infos für Helfer')" resize="vertical" />
+			<NcTextField v-model="draft.location" :label="t('helfer', 'Ort')" />
+			<h3>{{ t('helfer', 'Information') }}</h3>
+			<NcTextField v-model="draft.organizer" :label="t('helfer', 'Veranstalter (z. B. Verein, Abteilung)')" />
 			<div class="settings-fields__row">
-				<NcTextField v-model="draft.location" :label="t('helfer', 'Ort')" />
-				<NcTextField v-model="draft.contact" :label="t('helfer', 'Ansprechpartner / Kontakt')" />
+				<NcTextField v-model="draft.contact" :label="t('helfer', 'Ansprechpartner (Name)')" />
+				<NcTextField v-model="draft.contactEmail" type="email" :label="t('helfer', 'E-Mail des Ansprechpartners')" />
 			</div>
+			<NcTextArea v-model="draft.description" :label="t('helfer', 'Bemerkungen / Infos für Helfer')" resize="vertical" />
 		</template>
 
 		<h3>{{ t('helfer', 'Termine') }}</h3>
+		<NcDateTimePickerNative v-model="draft.startDate"
+			type="datetime-local"
+			clearable
+			:label="t('helfer', 'Beginn der Veranstaltung')" />
 		<div class="settings-fields__row">
 			<div>
 				<NcDateTimePickerNative v-model="draft.endDate"
 					type="datetime-local"
 					clearable
+					:min="draft.startDate"
 					:label="t('helfer', 'Enddatum der Veranstaltung')" />
 				<p class="settings-fields__hint">
 					{{ t('helfer', 'Danach können Helfer sich nicht mehr eintragen oder austragen – Änderungen sind nur noch hier in der Verwaltung möglich.') }}

@@ -24,6 +24,12 @@ use OCP\AppFramework\Db\Entity;
  * @method void setToken(?string $token)
  * @method string getTimezone()
  * @method void setTimezone(string $timezone)
+ * @method int|null getStartDate()
+ * @method void setStartDate(?int $startDate)
+ * @method string|null getOrganizer()
+ * @method void setOrganizer(?string $organizer)
+ * @method string|null getContactEmail()
+ * @method void setContactEmail(?string $contactEmail)
  * @method int|null getEndDate()
  * @method void setEndDate(?int $endDate)
  * @method int|null getCloseDate()
@@ -68,6 +74,9 @@ class Event extends Entity implements JsonSerializable {
 	protected $contact;
 	protected $token;
 	protected $timezone = 'UTC';
+	protected $startDate;
+	protected $organizer;
+	protected $contactEmail;
 	protected $endDate;
 	protected $closeDate;
 	protected $closeAction = self::CLOSE_ACTION_CLOSE;
@@ -86,6 +95,7 @@ class Event extends Entity implements JsonSerializable {
 	protected $updatedAt = 0;
 
 	public function __construct() {
+		$this->addType('startDate', 'integer');
 		$this->addType('endDate', 'integer');
 		$this->addType('closeDate', 'integer');
 		$this->addType('closedAt', 'integer');
@@ -158,6 +168,9 @@ class Event extends Entity implements JsonSerializable {
 			'description' => $this->description ?? '',
 			'location' => $this->location ?? '',
 			'contact' => $this->contact ?? '',
+			'contactEmail' => $this->contactEmail ?? '',
+			'organizer' => $this->organizer ?? '',
+			'startDate' => $this->startDate,
 			'token' => $this->token,
 			'timezone' => $this->timezone,
 			'endDate' => $this->endDate,

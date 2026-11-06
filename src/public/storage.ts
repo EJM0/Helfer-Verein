@@ -56,3 +56,19 @@ export function rememberPerson(person: Person): Person[] {
 	write(peopleKey, people)
 	return people
 }
+
+export interface OwnDonation {
+	id: number
+	editToken: string
+	name?: string
+}
+
+const ownDonationKey = (token: string) => `helfer-own-donations-${token}`
+
+export function loadOwnDonations(token: string): OwnDonation[] {
+	return read<OwnDonation>(ownDonationKey(token)).filter((e) => typeof e?.id === 'number' && typeof e?.editToken === 'string')
+}
+
+export function saveOwnDonations(token: string, entries: OwnDonation[]): void {
+	write(ownDonationKey(token), entries)
+}

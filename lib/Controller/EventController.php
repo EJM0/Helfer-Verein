@@ -6,6 +6,7 @@ namespace OCA\Helfer\Controller;
 
 use OCA\Helfer\AppInfo\Application;
 use OCA\Helfer\Service\CalendarService;
+use OCA\Helfer\Service\DonationService;
 use OCA\Helfer\Service\EventService;
 use OCA\Helfer\Service\ExportService;
 use OCA\Helfer\Service\SignupService;
@@ -33,6 +34,7 @@ class EventController extends Controller {
 		IRequest $request,
 		private EventService $events,
 		private SignupService $signups,
+		private DonationService $donations,
 		private ExportService $export,
 		private CalendarService $calendar,
 		private IUserSession $userSession,
@@ -230,6 +232,70 @@ class EventController extends Controller {
 		return $this->handle(function () use ($id, $signupId) {
 			$event = $this->events->getForUser($id, $this->uid());
 			$this->signups->adminDelete($event, $signupId);
+			return $this->full($event);
+		});
+	}
+
+	// ---- donation lists -----------------------------------------------------
+
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'POST', url: '/api/events/{id}/donation-lists', requirements: ['id' => '\d+'])]
+	public function addDonationList(int $id): JSONResponse {
+		return $this->handle(function () use ($id) {
+			$event = $this->events->getForUser($id, $this->uid());
+			$this->donations->addList($event, $this->request->getParams());
+			return $this->full($event);
+		});
+	}
+
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'PUT', url: '/api/events/{id}/donation-lists/{listId}', requirements: ['id' => '\d+', 'listId' => '\d+'])]
+	public function updateDonationList(int $id, int $listId): JSONResponse {
+		return $this->handle(function () use ($id, $listId) {
+			$event = $this->events->getForUser($id, $this->uid());
+			$this->donations->updateList($event, $listId, $this->request->getParams());
+			return $this->full($event);
+		});
+	}
+
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'DELETE', url: '/api/events/{id}/donation-lists/{listId}', requirements: ['id' => '\d+', 'listId' => '\d+'])]
+	public function deleteDonationList(int $id, int $listId): JSONResponse {
+		return $this->handle(function () use ($id, $listId) {
+			$event = $this->events->getForUser($id, $this->uid());
+			$this->donations->deleteList($event, $listId);
+			return $this->full($event);
+		});
+	}
+
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'POST', url: '/api/events/{id}/donations', requirements: ['id' => '\d+'])]
+	public function addDonation(int $id, int $listId): JSONResponse {
+		return $this->handle(function () use ($id, $listId) {
+			$event = $this->events->getForUser($id, $this->uid());
+			$this->donations->adminAdd($event, $listId, $this->request->getParams(), $this->uid());
+			return $this->full($event);
+		});
+	}
+
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'PUT', url: '/api/events/{id}/donations/{donationId}', requirements: ['id' => '\d+', 'donationId' => '\d+'])]
+	public function updateDonation(int $id, int $donationId): JSONResponse {
+		return $this->handle(function () use ($id, $donationId) {
+			$event = $this->events->getForUser($id, $this->uid());
+			$params = $this->request->getParams();
+			unset($params['id'], $params['donationId']);
+			$this->donations->adminUpdate($event, $donationId, $params);
+			return $this->full($event);
+		});
+	}
+
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'DELETE', url: '/api/events/{id}/donations/{donationId}', requirements: ['id' => '\d+', 'donationId' => '\d+'])]
+	public function deleteDonation(int $id, int $donationId): JSONResponse {
+		return $this->handle(function () use ($id, $donationId) {
+			$event = $this->events->getForUser($id, $this->uid());
+			$this->donations->adminDelete($event, $donationId);
 			return $this->full($event);
 		});
 	}

@@ -14,11 +14,18 @@ ganz ohne Nextcloud-Konto.
 - Helfer selbst eintragen, verschieben, austragen und **Rollen** vergeben (z. B. Schichtleitung, Kasse)
 - Abfrage von E-Mail, Telefon, Gruppe/Abteilung/Verein und **eigenen Fragen** (z. B. T-Shirt-Größe)
 - **Helferliste** nach Einsätzen oder Personen inkl. Stundensumme
+- **Spendenlisten** anlegen und Einträge bearbeiten (Tab „Spenden“)
 - Alle Schichten als Kalenderdatei (`.ics`) herunterladen
 - Oberfläche komplett mit den Nextcloud-Komponenten ([@nextcloud/vue](https://github.com/nextcloud-libraries/nextcloud-vue)),
   passt sich Design, Dark Mode und Barrierefreiheit von Nextcloud an
 
 **Öffentlicher Link (normale Helferansicht)**
+
+- Kopf mit Titel, **Beginn der Veranstaltung** und Ort, darunter **Information** (Veranstalter,
+  Ansprechpartner mit E-Mail) und **Bemerkungen**
+- **Spendenlisten** (z. B. „Kuchenliste – es werden 20 Kuchen benötigt“): Spende + Name eintragen,
+  Fortschritt „x von 20“, eigene Spenden wieder austragen
+- **Filter** nach Stand/Aufgabe und „nur freie Plätze“
 
 - Läuft auf Handy und PC, kein Konto nötig
 - Namen werden **direkt in die Schicht eingetragen**: bei jedem freien Platz auf „Eintragen“ klicken und Namen eingeben
@@ -42,6 +49,7 @@ ganz ohne Nextcloud-Konto.
 - Excel-Datei (`.xlsx`) mit zwei Tabs in **einer** Datei:
   - **Helfer** – wer geholfen hat (Name, Kontakt, Gruppe, Anzahl Einsätze, Stunden gesamt)
   - **Einsätze** – Name mit Datum, Uhrzeit von/bis, Stunden, Schicht, Stand, Rolle, Antworten
+  - **Spenden** – nur wenn Spendenlisten angelegt sind (Liste, Spende, Name, E-Mail, Kommentar)
 - Manuell jederzeit in einen frei wählbaren Nextcloud-Ordner oder als Download
 - **Automatisch**: Ist beim Anlegen (oder später) ein Ziel-Ordner und ein Enddatum angegeben, wird die
   Liste nach dem Enddatum automatisch in den Ordner exportiert (Hintergrundjob, alle 5 Minuten).

@@ -7,6 +7,7 @@ namespace OCA\Helfer\Controller;
 use OCA\Helfer\AppInfo\Application;
 use OCA\Helfer\Db\Event;
 use OCA\Helfer\Service\CalendarService;
+use OCA\Helfer\Service\DonationService;
 use OCA\Helfer\Service\EventService;
 use OCA\Helfer\Service\NotFoundException;
 use OCA\Helfer\Service\SignupService;
@@ -38,6 +39,7 @@ class PublicController extends Controller {
 		IRequest $request,
 		private EventService $events,
 		private SignupService $signups,
+		private DonationService $donations,
 		private CalendarService $calendar,
 		private IInitialState $initialState,
 		private ITimeFactory $time,
@@ -172,6 +174,49 @@ class PublicController extends Controller {
 		return $response;
 	}
 
+	#[PublicPage]
+	#[AnonRateLimit(limit: 30, period: 600)]
+	#[BruteForceProtection(action: 'helfer_public')]
+	#[FrontpageRoute(verb: 'POST', url: '/api/public/{token}/donations')]
+	public function donate(string $token, int $listId = 0): JSONResponse {
+		try {
+			$event = $this->resolve($token);
+		} catch (NotFoundException) {
+			$response = new JSONResponse(['message' => 'Not found'], Http::STATUS_NOT_FOUND);
+			$response->throttle();
+			return $response;
+		}
+		return $this->handle(function () use ($event, $listId) {
+			$result = $this->donations->publicAdd($event, $listId, $this->request->getParams());
+			return array_merge($this->publicData($event), [
+				'editToken' => $result['editToken'],
+				'created' => [$result['donation']->getId()],
+			]);
+		});
+	}
+
+	#[PublicPage]
+	#[AnonRateLimit(limit: 30, period: 600)]
+	#[BruteForceProtection(action: 'helfer_public')]
+	#[FrontpageRoute(verb: 'DELETE', url: '/api/public/{token}/donations/{donationId}', requirements: ['donationId' => '\d+'])]
+	public function cancelDonation(string $token, int $donationId, string $editToken = ''): JSONResponse {
+		try {
+			$event = $this->resolve($token);
+		} catch (NotFoundException) {
+			$response = new JSONResponse(['message' => 'Not found'], Http::STATUS_NOT_FOUND);
+			$response->throttle();
+			return $response;
+		}
+		$response = $this->handle(function () use ($event, $donationId, $editToken) {
+			$this->donations->publicCancel($event, $donationId, $editToken);
+			return $this->publicData($event);
+		});
+		if ($response->getStatus() === Http::STATUS_NOT_FOUND) {
+			$response->throttle();
+		}
+		return $response;
+	}
+
 	private function publicData(Event $event): array {
 		$full = $this->events->getFull($event);
 		$now = $this->time->getTime();
@@ -182,6 +227,9 @@ class PublicController extends Controller {
 				'description' => $event->getDescription() ?? '',
 				'location' => $event->getLocation() ?? '',
 				'contact' => $event->getContact() ?? '',
+				'contactEmail' => $event->getContactEmail() ?? '',
+				'organizer' => $event->getOrganizer() ?? '',
+				'startDate' => $event->getStartDate(),
 				'timezone' => $event->getTimezone(),
 				'endDate' => $event->getEndDate(),
 				'closeDate' => $event->getCloseDate(),
@@ -199,6 +247,8 @@ class PublicController extends Controller {
 			'stations' => $full['stations'],
 			'slots' => $full['slots'],
 			'signups' => array_map(static fn ($s) => $s->toPublicArray($withNames), $full['signups']),
+			'donationLists' => $full['donationLists'],
+			'donations' => array_map(static fn ($d) => $d->toPublicArray($withNames), $full['donations']),
 		];
 	}
 }
