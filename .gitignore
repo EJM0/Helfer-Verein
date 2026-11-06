@@ -1,0 +1,14 @@
+/.idea/
+/*.iml
+
+/vendor/
+/vendor-bin/*/vendor/
+
+/.php-cs-fixer.cache
+/tests/.phpunit.cache
+/build/
+
+/node_modules/
+# Compiled assets are committed so the app can be installed straight from git,
+# source maps are not.
+/js/*.map
