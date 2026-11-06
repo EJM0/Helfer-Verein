@@ -85,6 +85,7 @@ class SignupService {
 			$this->db->rollBack();
 			throw $e;
 		}
+		$this->touch($event);
 		return ['signups' => $created, 'editToken' => $plainToken];
 	}
 
@@ -102,6 +103,7 @@ class SignupService {
 			throw new NotFoundException();
 		}
 		$this->signups->delete($signup);
+		$this->touch($event);
 	}
 
 	/**
@@ -162,6 +164,9 @@ class SignupService {
 		}
 		if ($event->isEnded($now)) {
 			throw new ValidationException($this->l->t('Die Veranstaltung ist beendet. Eintragungen und Änderungen sind nicht mehr möglich.'));
+		}
+		if ($event->isSignupClosed($now)) {
+			throw new ValidationException($this->l->t('Der Anmeldeschluss ist vorbei. Eintragungen und Änderungen sind nicht mehr möglich.'));
 		}
 	}
 

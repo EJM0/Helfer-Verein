@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-11-06
+
+### Added
+
+- Anmeldeschluss: eigenes Datum, bis wann Helfer sich eintragen/austragen können
+- Automatischer Export bei Änderungen (höchstens alle 15 Minuten, abschaltbar), zusätzlich zum endgültigen Export nach dem Enddatum
+
+### Fixed
+
+- Endgültiger Export nach dem Enddatum findet auch statt, wenn vorher schon (manuell) exportiert wurde
+- Öffentliche Eintragungen und Spenden markieren die Umfrage als geändert
+
 ## [1.4.0] - 2026-11-06
 
 ### Added

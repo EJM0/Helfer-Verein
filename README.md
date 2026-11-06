@@ -51,8 +51,9 @@ ganz ohne Nextcloud-Konto.
 
 **Termine**
 
-- **Enddatum der Veranstaltung:** danach kann über den Link nichts mehr eingetragen oder geändert werden.
-  Änderungen sind dann nur noch in der Verwaltung möglich.
+- **Beginn** und **Enddatum der Veranstaltung**
+- **Anmeldeschluss** (optional): bis dahin können sich Helfer eintragen und austragen. Ohne
+  Anmeldeschluss gilt das Enddatum. Danach sind Änderungen nur noch in der Verwaltung möglich.
 - **Schließungsdatum:** danach wird der öffentliche Link **geschlossen** (Seite zeigt „geschlossen“) oder
   **gelöscht** (Link nicht mehr erreichbar). Die Umfrage bleibt intern vollständig erhalten.
 
@@ -65,9 +66,11 @@ ganz ohne Nextcloud-Konto.
   - **Einsätze** – Name mit Datum, Uhrzeit von/bis, Stunden, Schicht, Stand, Rolle, Antworten
   - **Spenden** – Liste, Spende, Name, E-Mail, Kommentar
 - Manuell jederzeit in einen frei wählbaren Nextcloud-Ordner oder als Download
-- **Automatisch**: Ist beim Anlegen (oder später) ein Ziel-Ordner und ein Enddatum angegeben, wird die
-  Liste nach dem Enddatum automatisch in den Ordner exportiert (Hintergrundjob, alle 5 Minuten).
-  Eine vorhandene Datei gleichen Namens wird dabei aktualisiert.
+- **Automatisch**, sobald ein Ziel-Ordner angegeben ist (Hintergrundjob):
+  - **bei Änderungen** wird die Datei regelmäßig aktualisiert – nur wenn sich seit dem letzten Export etwas
+    geändert hat (Eintragungen, Spenden, Bearbeitungen) und höchstens alle 15 Minuten (abschaltbar)
+  - **nach dem Enddatum** wird einmal die endgültige Liste exportiert
+  - die Datei wird dabei überschrieben; ältere Stände bleiben über die Nextcloud-Versionen erhalten
 
 ## Installation
 

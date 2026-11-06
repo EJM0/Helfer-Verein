@@ -19,6 +19,8 @@ export interface SettingsDraft {
 	organizer: string
 	startDate: Date | null
 	endDate: Date | null
+	signupDeadline: Date | null
+	exportPeriodic: boolean
 	closeDate: Date | null
 	closeAction: 'close' | 'delete'
 	exportFolder: string
@@ -65,19 +67,29 @@ function removeQuestion(index: number) {
 		</template>
 
 		<h3>{{ t('helfer', 'Termine') }}</h3>
-		<NcDateTimePickerNative v-model="draft.startDate"
-			type="datetime-local"
-			clearable
-			:label="t('helfer', 'Beginn der Veranstaltung')" />
+		<div class="settings-fields__row">
+			<NcDateTimePickerNative v-model="draft.startDate"
+				type="datetime-local"
+				clearable
+				:label="t('helfer', 'Beginn der Veranstaltung')" />
+			<NcDateTimePickerNative v-model="draft.endDate"
+				type="datetime-local"
+				clearable
+				:min="draft.startDate"
+				:label="t('helfer', 'Enddatum der Veranstaltung')" />
+		</div>
+		<p class="settings-fields__hint">
+			{{ t('helfer', 'Nach dem Enddatum sind über den Link keine Änderungen mehr möglich – nur noch hier in der Verwaltung – und die Helferliste wird automatisch exportiert (falls ein Ordner angegeben ist).') }}
+		</p>
 		<div class="settings-fields__row">
 			<div>
-				<NcDateTimePickerNative v-model="draft.endDate"
+				<NcDateTimePickerNative v-model="draft.signupDeadline"
 					type="datetime-local"
 					clearable
-					:min="draft.startDate"
-					:label="t('helfer', 'Enddatum der Veranstaltung')" />
+					:max="draft.endDate"
+					:label="t('helfer', 'Anmeldeschluss (Eintragen möglich bis)')" />
 				<p class="settings-fields__hint">
-					{{ t('helfer', 'Danach können Helfer sich nicht mehr eintragen oder austragen – Änderungen sind nur noch hier in der Verwaltung möglich.') }}
+					{{ t('helfer', 'Optional, z. B. eine Woche vor der Veranstaltung. Danach können Helfer sich nicht mehr eintragen oder austragen. Ohne Anmeldeschluss gilt das Enddatum.') }}
 				</p>
 			</div>
 			<div>
@@ -127,15 +139,22 @@ function removeQuestion(index: number) {
 				{{ t('helfer', 'Der Export-Pfad liegt in den Dateien von {owner} und kann nur dort geändert werden. Über „Exportieren …“ kannst du jederzeit in deine eigenen Dateien exportieren.', { owner: props.exportLockedBy }) }}
 			</template>
 			<template v-else-if="draft.exportFolder && draft.endDate">
-				{{ t('helfer', 'Die Helferliste wird nach dem Enddatum automatisch als Excel-Datei in diesen Ordner exportiert.') }}
+				{{ t('helfer', 'Nach dem Enddatum wird die endgültige Helferliste automatisch als Excel-Datei in diesen Ordner exportiert.') }}
 			</template>
 			<template v-else-if="draft.exportFolder">
-				{{ t('helfer', 'Gib zusätzlich ein Enddatum an, damit automatisch exportiert wird. Manuell kannst du jederzeit exportieren.') }}
+				{{ t('helfer', 'Mit einem Enddatum wird danach zusätzlich die endgültige Liste exportiert. Manuell kannst du jederzeit exportieren.') }}
 			</template>
 			<template v-else>
 				{{ t('helfer', 'Optional. Ohne Ordner kannst du die Liste jederzeit manuell exportieren oder herunterladen.') }}
 			</template>
 		</p>
+
+		<NcCheckboxRadioSwitch v-if="draft.exportFolder"
+			v-model="draft.exportPeriodic"
+			:disabled="!!props.exportLockedBy"
+			type="switch">
+			{{ t('helfer', 'Bei Änderungen automatisch aktualisieren (höchstens alle 15 Minuten)') }}
+		</NcCheckboxRadioSwitch>
 
 		<template v-if="props.full">
 			<h3>{{ t('helfer', 'Angaben der Helfer') }}</h3>

@@ -30,6 +30,10 @@ use OCP\AppFramework\Db\Entity;
  * @method void setOrganizer(?string $organizer)
  * @method string|null getContactEmail()
  * @method void setContactEmail(?string $contactEmail)
+ * @method int|null getSignupDeadline()
+ * @method void setSignupDeadline(?int $signupDeadline)
+ * @method int getExportPeriodic()
+ * @method void setExportPeriodic(int $exportPeriodic)
  * @method int|null getEndDate()
  * @method void setEndDate(?int $endDate)
  * @method int|null getCloseDate()
@@ -78,6 +82,8 @@ class Event extends Entity implements JsonSerializable {
 	protected $organizer;
 	protected $contactEmail;
 	protected $endDate;
+	protected $signupDeadline;
+	protected $exportPeriodic = 1;
 	protected $closeDate;
 	protected $closeAction = self::CLOSE_ACTION_CLOSE;
 	protected $closedAt;
@@ -97,6 +103,8 @@ class Event extends Entity implements JsonSerializable {
 	public function __construct() {
 		$this->addType('startDate', 'integer');
 		$this->addType('endDate', 'integer');
+		$this->addType('signupDeadline', 'integer');
+		$this->addType('exportPeriodic', 'integer');
 		$this->addType('closeDate', 'integer');
 		$this->addType('closedAt', 'integer');
 		$this->addType('exportedAt', 'integer');
@@ -113,6 +121,12 @@ class Event extends Entity implements JsonSerializable {
 	public function isEnded(?int $now = null): bool {
 		$now ??= time();
 		return $this->endDate !== null && $now >= $this->endDate;
+	}
+
+	/** After the signup deadline the public can no longer sign up or cancel. */
+	public function isSignupClosed(?int $now = null): bool {
+		$now ??= time();
+		return $this->signupDeadline !== null && $now >= $this->signupDeadline;
 	}
 
 	/** After the closing date the public link is closed (or deleted). */
@@ -174,6 +188,9 @@ class Event extends Entity implements JsonSerializable {
 			'token' => $this->token,
 			'timezone' => $this->timezone,
 			'endDate' => $this->endDate,
+			'signupDeadline' => $this->signupDeadline,
+			'exportPeriodic' => (bool)$this->exportPeriodic,
+			'signupClosed' => $this->isSignupClosed(),
 			'closeDate' => $this->closeDate,
 			'closeAction' => $this->closeAction,
 			'closedAt' => $this->closedAt,

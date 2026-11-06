@@ -160,7 +160,7 @@ class EventService {
 	 */
 	public function update(Event $event, array $data, string $uid): Event {
 		if (!$this->isOwner($event, $uid)) {
-			unset($data['exportFolder']);
+			unset($data['exportFolder'], $data['exportPeriodic']);
 		}
 		$oldClose = $event->getCloseDate();
 		$this->apply($event, $data, false);
@@ -209,7 +209,7 @@ class EventService {
 			$copy = new Event();
 			// Dates are not copied: they belong to the old event and would close the copy right away.
 			foreach (['title', 'description', 'location', 'contact', 'contactEmail', 'organizer', 'timezone', 'closeAction',
-				'exportFolder', 'askEmail', 'emailRequired', 'askPhone', 'askGroup', 'groupOptions', 'questions', 'publicNames'] as $field) {
+				'exportFolder', 'exportPeriodic', 'askEmail', 'emailRequired', 'askPhone', 'askGroup', 'groupOptions', 'questions', 'publicNames'] as $field) {
 				$copy->{'set' . ucfirst($field)}($source->{'get' . ucfirst($field)}());
 			}
 			$copy->setTitle($this->l->t('%s (Kopie)', [$source->getTitle()]));
@@ -520,6 +520,13 @@ class EventService {
 		if (array_key_exists('endDate', $data)) {
 			$event->setEndDate($this->optionalTimestamp($data['endDate']));
 		}
+		if (array_key_exists('signupDeadline', $data)) {
+			$event->setSignupDeadline($this->optionalTimestamp($data['signupDeadline']));
+		}
+		if ($event->getSignupDeadline() !== null && $event->getEndDate() !== null
+			&& $event->getSignupDeadline() > $event->getEndDate()) {
+			throw new ValidationException($this->l->t('Der Anmeldeschluss darf nicht nach dem Enddatum der Veranstaltung liegen.'));
+		}
 		if (array_key_exists('closeDate', $data)) {
 			$event->setCloseDate($this->optionalTimestamp($data['closeDate']));
 		}
@@ -545,7 +552,7 @@ class EventService {
 			}
 			$event->setExportFolder($folder);
 		}
-		foreach (['askEmail', 'emailRequired', 'askPhone', 'askGroup', 'publicNames'] as $flag) {
+		foreach (['askEmail', 'emailRequired', 'askPhone', 'askGroup', 'publicNames', 'exportPeriodic'] as $flag) {
 			if (array_key_exists($flag, $data)) {
 				$event->{'set' . ucfirst($flag)}(empty($data[$flag]) ? 0 : 1);
 			}

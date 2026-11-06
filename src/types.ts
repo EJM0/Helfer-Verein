@@ -22,6 +22,9 @@ export interface HelferEvent {
 	token: string | null
 	timezone: string
 	endDate: number | null
+	signupDeadline: number | null
+	signupClosed: boolean
+	exportPeriodic: boolean
 	closeDate: number | null
 	closeAction: 'close' | 'delete'
 	closedAt: number | null
@@ -134,7 +137,7 @@ export interface FullEvent {
 }
 
 export type PublicEvent = Pick<HelferEvent, 'title' | 'description' | 'location' | 'contact' | 'contactEmail' | 'organizer' | 'startDate' | 'timezone' | 'endDate'
-	| 'closeDate' | 'ended' | 'closed' | 'askEmail' | 'emailRequired' | 'askPhone' | 'askGroup' | 'groupOptions' | 'questions' | 'publicNames'>
+	| 'closeDate' | 'signupDeadline' | 'signupClosed' | 'ended' | 'closed' | 'askEmail' | 'emailRequired' | 'askPhone' | 'askGroup' | 'groupOptions' | 'questions' | 'publicNames'>
 
 export interface PublicData {
 	event: PublicEvent

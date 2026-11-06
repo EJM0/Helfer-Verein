@@ -58,18 +58,35 @@ class EventMapper extends QBMapper {
 	}
 
 	/**
-	 * Events whose end date passed, which have an export folder and were not exported yet.
+	 * Events with an export folder that need an automatic export:
+	 * - once after the end date (final list), and
+	 * - with periodic export enabled: whenever something changed since the last export,
+	 *   at most every $minInterval seconds (each export creates a new file version).
 	 *
 	 * @return list<Event>
 	 */
-	public function findPendingExports(int $now): array {
+	public function findPendingExports(int $now, int $minInterval = 900): array {
 		$qb = $this->db->getQueryBuilder();
+		$expr = $qb->expr();
+		$final = $expr->andX(
+			$expr->isNotNull('end_date'),
+			$expr->lte('end_date', $qb->createNamedParameter($now, IQueryBuilder::PARAM_INT)),
+			$expr->orX($expr->isNull('exported_at'), $expr->lt('exported_at', 'end_date')),
+		);
+		$periodic = $expr->andX(
+			$expr->eq('export_periodic', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)),
+			$expr->orX(
+				$expr->isNull('exported_at'),
+				$expr->andX(
+					$expr->gt('updated_at', 'exported_at'),
+					$expr->lte('exported_at', $qb->createNamedParameter($now - $minInterval, IQueryBuilder::PARAM_INT)),
+				),
+			),
+		);
 		$qb->select('*')->from($this->getTableName())
-			->where($qb->expr()->isNotNull('end_date'))
-			->andWhere($qb->expr()->lte('end_date', $qb->createNamedParameter($now, IQueryBuilder::PARAM_INT)))
-			->andWhere($qb->expr()->isNotNull('export_folder'))
-			->andWhere($qb->expr()->neq('export_folder', $qb->createNamedParameter('')))
-			->andWhere($qb->expr()->isNull('exported_at'));
+			->where($expr->isNotNull('export_folder'))
+			->andWhere($expr->neq('export_folder', $qb->createNamedParameter('')))
+			->andWhere($expr->orX($final, $periodic));
 		return $this->findEntities($qb);
 	}
 

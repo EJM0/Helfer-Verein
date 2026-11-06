@@ -48,6 +48,9 @@ const status = computed(() => {
 	if (event.value.closed) {
 		return { type: 'error' as const, text: t('helfer', 'Geschlossen – der öffentliche Link ist nicht mehr aktiv. Die Umfrage bleibt hier intern erhalten.') }
 	}
+	if (event.value.signupClosed && !event.value.ended) {
+		return { type: 'warning' as const, text: t('helfer', 'Anmeldeschluss vorbei – Helfer können sich nicht mehr eintragen oder austragen. Änderungen sind nur noch hier möglich.') }
+	}
 	if (event.value.ended) {
 		return { type: 'warning' as const, text: t('helfer', 'Beendet – Helfer können sich nicht mehr eintragen oder austragen. Änderungen sind nur noch hier möglich.') }
 	}
@@ -182,6 +185,7 @@ function openExportedFile() {
 						· {{ t('helfer', '{n} Eintragungen', { n: data.signups.length }) }}
 					</span>
 					<span v-if="event.startDate"> · {{ t('helfer', 'Beginn: {date}', { date: formatDateTime(event.startDate, tz) }) }}</span>
+					<span v-if="event.signupDeadline"> · {{ t('helfer', 'Anmeldeschluss: {date}', { date: formatDateTime(event.signupDeadline, tz) }) }}</span>
 					<span v-if="event.endDate"> · {{ t('helfer', 'Ende: {date}', { date: formatDateTime(event.endDate, tz) }) }}</span>
 					<span v-if="event.closeDate"> · {{ t('helfer', 'Schließung: {date}', { date: formatDateTime(event.closeDate, tz) }) }}</span>
 				</p>

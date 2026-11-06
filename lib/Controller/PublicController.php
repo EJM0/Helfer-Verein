@@ -274,6 +274,8 @@ class PublicController extends Controller {
 				'endDate' => $event->getEndDate(),
 				'closeDate' => $event->getCloseDate(),
 				'ended' => $event->isEnded($now),
+				'signupDeadline' => $event->getSignupDeadline(),
+				'signupClosed' => $event->isSignupClosed($now),
 				'closed' => $event->isClosed($now),
 				'askEmail' => (bool)$event->getAskEmail(),
 				'emailRequired' => (bool)$event->getAskEmail() && (bool)$event->getEmailRequired(),

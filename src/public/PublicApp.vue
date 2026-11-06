@@ -41,7 +41,12 @@ const onlyFree = ref(false)
 
 const event = computed(() => data.value?.event)
 const tz = computed(() => event.value?.timezone)
-const writable = computed(() => !!event.value && !event.value.ended && !event.value.closed)
+const writable = computed(() => !!event.value && !event.value.ended && !event.value.closed && !event.value.signupClosed)
+/** Until when people can sign up or cancel: the earlier of signup deadline and end date. */
+const writableUntil = computed(() => {
+	const dates = [event.value?.signupDeadline, event.value?.endDate].filter((d): d is number => !!d)
+	return dates.length > 0 ? Math.min(...dates) : null
+})
 // Own entries: remembered in this browser and/or recognised by the server via the device cookie.
 const ownById = computed(() => {
 	const map = new Map<number, OwnSignup>(own.value.map((o) => [o.id, o]))
@@ -273,9 +278,9 @@ onMounted(load)
 					<li v-if="event.location">
 						<NcIconSvgWrapper :path="mdiMapMarker" :size="18" /> {{ event.location }}
 					</li>
-					<li v-if="event.endDate && writable">
+					<li v-if="writableUntil && writable">
 						<NcIconSvgWrapper :path="mdiClockOutline" :size="18" />
-						{{ t('helfer', 'Eintragen und Austragen möglich bis {date}', { date: formatDateTime(event.endDate, tz) }) }}
+						{{ t('helfer', 'Anmeldeschluss: Eintragen und Austragen möglich bis {date}', { date: formatDateTime(writableUntil, tz) }) }}
 					</li>
 				</ul>
 				<p v-if="writable" class="helfer-public__hint">
@@ -309,6 +314,7 @@ onMounted(load)
 			</section>
 
 			<NcNoteCard v-if="event.closed" type="error" :text="t('helfer', 'Diese Umfrage ist geschlossen.')" />
+			<NcNoteCard v-else-if="event.signupClosed && !event.ended" type="warning" :text="t('helfer', 'Der Anmeldeschluss ist vorbei. Eintragungen und Änderungen sind nicht mehr möglich. Bei Fragen wende dich bitte an die Organisatoren.')" />
 			<NcNoteCard v-else-if="event.ended" type="warning" :text="t('helfer', 'Die Veranstaltung ist beendet. Eintragungen und Änderungen sind nicht mehr möglich. Bei Fragen wende dich bitte an die Organisatoren.')" />
 
 			<section v-if="mine.length > 0" class="helfer-public__card helfer-public__mine">

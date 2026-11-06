@@ -103,7 +103,9 @@ class DonationService {
 		$donation->setEditToken(hash('sha256', $plainToken));
 		$donation->setDeviceHash($deviceHash);
 		$donation->setCreatedAt($this->time->getTime());
-		return ['donation' => $this->donations->insert($donation), 'editToken' => $plainToken];
+		$donation = $this->donations->insert($donation);
+		$this->touch($event);
+		return ['donation' => $donation, 'editToken' => $plainToken];
 	}
 
 	/** @throws ValidationException|NotFoundException */
@@ -116,6 +118,7 @@ class DonationService {
 			throw new NotFoundException();
 		}
 		$this->donations->delete($donation);
+		$this->touch($event);
 	}
 
 	/** @throws ValidationException|NotFoundException */
