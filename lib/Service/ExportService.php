@@ -10,9 +10,11 @@ use OCA\Helfer\Db\Shift;
 use OCA\Helfer\Db\Station;
 use OCA\Helfer\Export\Cell;
 use OCA\Helfer\Export\XlsxWriter;
+use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Files\File;
 use OCP\IL10N;
 use OCP\ITempManager;
+use OCP\IURLGenerator;
 
 /**
  * Builds the helper list workbook and stores it in the owner's files.
@@ -23,6 +25,8 @@ class ExportService {
 	public function __construct(
 		private EventService $eventService,
 		private ITempManager $tempManager,
+		private ITimeFactory $time,
+		private IURLGenerator $urlGenerator,
 		private IL10N $l,
 	) {
 	}
@@ -173,35 +177,90 @@ class ExportService {
 			];
 		}
 
+		// Sheet "Spenden": everything people bring.
+		$listTitles = [];
+		foreach ($full['donationLists'] as $list) {
+			$listTitles[$list->getId()] = $list->getTitle();
+		}
+		$donations = [[
+			$this->l->t('Liste'),
+			$this->l->t('Spende'),
+			$this->l->t('Name'),
+			$this->l->t('E-Mail'),
+			$this->l->t('Kommentar'),
+		]];
+		$donationCount = [];
+		foreach ($full['donations'] as $donation) {
+			if (!isset($listTitles[$donation->getListId()])) {
+				continue;
+			}
+			$donationCount[$donation->getListId()] = ($donationCount[$donation->getListId()] ?? 0) + 1;
+			$donations[] = [
+				$listTitles[$donation->getListId()],
+				$donation->getItem(),
+				$donation->getName(),
+				$donation->getEmail() ?? '',
+				$donation->getComment() ?? '',
+			];
+		}
+
+		// Sheet "Information": event details and totals.
+		$needed = 0;
+		$filled = 0;
+		$perSlot = [];
+		foreach ($entries as $entry) {
+			$slotId = $entry['signup']->getSlotId();
+			$perSlot[$slotId] = ($perSlot[$slotId] ?? 0) + 1;
+		}
+		foreach ($slots as $slot) {
+			$needed += $slot->getNeeded();
+			$filled += min($slot->getNeeded(), $perSlot[$slot->getId()] ?? 0);
+		}
+		$totalHours = 0.0;
+		foreach ($people as $person) {
+			$totalHours += $person['hours'];
+		}
+		$date = static fn (?int $ts): Cell|string => $ts === null ? '' : new Cell(XlsxWriter::excelDate($ts, $tz), XlsxWriter::STYLE_DATETIME);
+		$contactMail = $event->getContactEmail() ?? '';
+		$info = [
+			[$this->l->t('Angabe'), $this->l->t('Wert')],
+			[$this->l->t('Veranstaltung'), $event->getTitle()],
+			[$this->l->t('Beginn'), $date($event->getStartDate())],
+			[$this->l->t('Enddatum (Eintragen möglich bis)'), $date($event->getEndDate())],
+			[$this->l->t('Schließungsdatum des Links'), $date($event->getCloseDate())],
+			[$this->l->t('Ort'), $event->getLocation() ?? ''],
+			[$this->l->t('Veranstalter'), $event->getOrganizer() ?? ''],
+			[$this->l->t('Ansprechpartner'), trim(($event->getContact() ?? '') . ($contactMail !== '' ? ' (' . $contactMail . ')' : ''))],
+			[$this->l->t('Bemerkungen'), $event->getDescription() ?? ''],
+			[$this->l->t('Öffentlicher Link'), $event->getToken() !== null
+				? $this->urlGenerator->linkToRouteAbsolute('helfer.public.show', ['token' => $event->getToken()])
+				: $this->l->t('kein Link (geschlossen oder gelöscht)')],
+			['', ''],
+			[$this->l->t('Schichten'), count($shifts)],
+			[$this->l->t('Stände / Aufgaben'), count($stations)],
+			[$this->l->t('Benötigte Helferplätze'), $needed],
+			[$this->l->t('Belegte Helferplätze'), $filled],
+			[$this->l->t('Einsätze (Eintragungen)'), count($entries)],
+			[$this->l->t('Helfer (Personen)'), count($people)],
+			[$this->l->t('Helferstunden gesamt'), new Cell(round($totalHours, 2), XlsxWriter::STYLE_DECIMAL)],
+		];
+		foreach ($full['donationLists'] as $list) {
+			$count = $donationCount[$list->getId()] ?? 0;
+			$info[] = [
+				$this->l->t('Spenden: %s', [$list->getTitle()]),
+				$list->getNeeded() !== null
+					? $this->l->t('%1$s von %2$s', [(string)$count, (string)$list->getNeeded()])
+					: (string)$count,
+			];
+		}
+		$info[] = ['', ''];
+		$info[] = [$this->l->t('Exportiert am'), $date($this->time->getTime())];
+
 		$writer = new XlsxWriter();
+		$writer->addSheet($this->l->t('Information'), $info, false);
 		$writer->addSheet($this->l->t('Helfer'), $helpers);
 		$writer->addSheet($this->l->t('Einsätze'), $assignments);
-		if ($full['donationLists'] !== []) {
-			$listTitles = [];
-			foreach ($full['donationLists'] as $list) {
-				$listTitles[$list->getId()] = $list->getTitle();
-			}
-			$donations = [[
-				$this->l->t('Liste'),
-				$this->l->t('Spende'),
-				$this->l->t('Name'),
-				$this->l->t('E-Mail'),
-				$this->l->t('Kommentar'),
-			]];
-			foreach ($full['donations'] as $donation) {
-				if (!isset($listTitles[$donation->getListId()])) {
-					continue;
-				}
-				$donations[] = [
-					$listTitles[$donation->getListId()],
-					$donation->getItem(),
-					$donation->getName(),
-					$donation->getEmail() ?? '',
-					$donation->getComment() ?? '',
-				];
-			}
-			$writer->addSheet($this->l->t('Spenden'), $donations);
-		}
+		$writer->addSheet($this->l->t('Spenden'), $donations);
 		$temp = $this->tempManager->getTemporaryFile('.xlsx');
 		if ($temp === false) {
 			throw new \RuntimeException('Could not create temporary file');

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Informationsblock: Veranstalter, Ansprechpartner mit E-Mail, Bemerkungen
 - Spendenlisten (z. B. Kuchenliste) mit benötigter Anzahl, öffentlich eintragen/austragen, Verwaltung im Tab „Spenden“, eigener Tab im Excel-Export
 - Filter nach Stand und „nur freie Plätze“ auf der öffentlichen Seite
+- Export: neuer Tab „Information“ (Angaben zur Veranstaltung und Summen), Tab „Spenden“ ist immer enthalten
 
 ## [1.1.0] - 2026-11-06
 

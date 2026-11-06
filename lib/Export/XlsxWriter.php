@@ -20,14 +20,17 @@ class XlsxWriter {
 	public const STYLE_DECIMAL = 4;
 	public const STYLE_DATETIME = 5;
 
-	/** @var list<array{name: string, rows: list<list<mixed>>}> */
+	/** @var list<array{name: string, rows: list<list<mixed>>, filter: bool}> */
 	private array $sheets = [];
 
-	/** @param list<list<mixed>> $rows first row is the header */
-	public function addSheet(string $name, array $rows): void {
+	/**
+	 * @param list<list<mixed>> $rows first row is the header
+	 * @param bool $filter add an auto filter to the header row
+	 */
+	public function addSheet(string $name, array $rows, bool $filter = true): void {
 		$name = trim(str_replace(['[', ']', ':', '*', '?', '/', '\\'], ' ', $name));
 		$name = mb_substr($name === '' ? 'Sheet' . (count($this->sheets) + 1) : $name, 0, 31);
-		$this->sheets[] = ['name' => $name, 'rows' => $rows];
+		$this->sheets[] = ['name' => $name, 'rows' => $rows, 'filter' => $filter];
 	}
 
 	/** Convert a unix timestamp to an Excel serial date in the given time zone. */
@@ -50,7 +53,7 @@ class XlsxWriter {
 		$zip->addFromString('xl/_rels/workbook.xml.rels', $this->workbookRels());
 		$zip->addFromString('xl/styles.xml', $this->styles());
 		foreach ($this->sheets as $i => $sheet) {
-			$zip->addFromString('xl/worksheets/sheet' . ($i + 1) . '.xml', $this->sheet($sheet['rows']));
+			$zip->addFromString('xl/worksheets/sheet' . ($i + 1) . '.xml', $this->sheet($sheet['rows'], $sheet['filter']));
 		}
 		$zip->close();
 		$content = file_get_contents($tempFile);
@@ -80,15 +83,22 @@ class XlsxWriter {
 		foreach ($this->sheets as $i => $sheet) {
 			$xml .= '<sheet name="' . $this->esc($sheet['name']) . '" sheetId="' . ($i + 1) . '" r:id="rId' . ($i + 1) . '"/>';
 		}
-		$xml .= '</sheets><definedNames>';
+		$xml .= '</sheets>';
+		$names = '';
 		foreach ($this->sheets as $i => $sheet) {
+			if (!$sheet['filter']) {
+				continue;
+			}
 			$cols = max(1, ...array_map('count', $sheet['rows'] ?: [[]]));
 			$rows = max(1, count($sheet['rows']));
-			$xml .= '<definedName name="_xlnm._FilterDatabase" localSheetId="' . $i . '" hidden="1">'
+			$names .= '<definedName name="_xlnm._FilterDatabase" localSheetId="' . $i . '" hidden="1">'
 				. $this->esc("'" . str_replace("'", "''", $sheet['name']) . "'!\$A\$1:\$" . self::column($cols - 1) . '$' . $rows)
 				. '</definedName>';
 		}
-		return $xml . '</definedNames></workbook>';
+		if ($names !== '') {
+			$xml .= '<definedNames>' . $names . '</definedNames>';
+		}
+		return $xml . '</workbook>';
 	}
 
 	private function workbookRels(): string {
@@ -129,7 +139,7 @@ class XlsxWriter {
 	}
 
 	/** @param list<list<mixed>> $rows */
-	private function sheet(array $rows): string {
+	private function sheet(array $rows, bool $filter): string {
 		$colCount = 0;
 		$widths = [];
 		foreach ($rows as $row) {
@@ -172,7 +182,7 @@ class XlsxWriter {
 			$xml .= '</row>';
 		}
 		$xml .= '</sheetData>';
-		if ($colCount > 0 && count($rows) > 0) {
+		if ($filter && $colCount > 0 && count($rows) > 0) {
 			$xml .= '<autoFilter ref="A1:' . self::column($colCount - 1) . count($rows) . '"/>';
 		}
 		return $xml . '</worksheet>';

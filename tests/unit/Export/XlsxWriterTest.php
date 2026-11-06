@@ -46,4 +46,17 @@ final class XlsxWriterTest extends TestCase {
 		$zip->close();
 		unlink($file);
 	}
+
+	public function testSheetWithoutFilter(): void {
+		$writer = new XlsxWriter();
+		$writer->addSheet('Information', [['Angabe', 'Wert'], ['Veranstaltung', 'Sommerfest']], false);
+		$file = tempnam(sys_get_temp_dir(), 'xlsx');
+		file_put_contents($file, $writer->toString($file));
+		$zip = new ZipArchive();
+		$this->assertTrue($zip->open($file));
+		$this->assertStringNotContainsString('autoFilter', (string)$zip->getFromName('xl/worksheets/sheet1.xml'));
+		$this->assertStringNotContainsString('definedNames', (string)$zip->getFromName('xl/workbook.xml'));
+		$zip->close();
+		unlink($file);
+	}
 }

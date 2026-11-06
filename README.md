@@ -46,10 +46,12 @@ ganz ohne Nextcloud-Konto.
 
 **Export**
 
-- Excel-Datei (`.xlsx`) mit zwei Tabs in **einer** Datei:
+- Excel-Datei (`.xlsx`) mit mehreren Tabs in **einer** Datei:
+  - **Information** – Veranstaltung, Beginn, Enddatum, Schließungsdatum, Ort, Veranstalter,
+    Ansprechpartner, Bemerkungen, Link sowie Summen (Plätze, Helfer, Stunden, Spenden „x von y“)
   - **Helfer** – wer geholfen hat (Name, Kontakt, Gruppe, Anzahl Einsätze, Stunden gesamt)
   - **Einsätze** – Name mit Datum, Uhrzeit von/bis, Stunden, Schicht, Stand, Rolle, Antworten
-  - **Spenden** – nur wenn Spendenlisten angelegt sind (Liste, Spende, Name, E-Mail, Kommentar)
+  - **Spenden** – Liste, Spende, Name, E-Mail, Kommentar
 - Manuell jederzeit in einen frei wählbaren Nextcloud-Ordner oder als Download
 - **Automatisch**: Ist beim Anlegen (oder später) ein Ziel-Ordner und ein Enddatum angegeben, wird die
   Liste nach dem Enddatum automatisch in den Ordner exportiert (Hintergrundjob, alle 5 Minuten).
