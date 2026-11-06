@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Namens-Chips öffnen ihr Menü beim Klick auf den ganzen Chip, nicht nur auf die drei Punkte
+- Helferseite zeigt unten den Nextcloud-Footer mit Impressum und Datenschutzerklärung
 
 ## [1.5.0] - 2026-11-06
 

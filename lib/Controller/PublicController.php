@@ -112,7 +112,6 @@ class PublicController extends Controller {
 		$this->initialState->provideInitialState('token', $token);
 		$response = new PublicTemplateResponse(Application::APP_ID, 'public');
 		$response->setHeaderTitle($event->getTitle());
-		$response->setFooterVisible(false);
 		return $this->withDeviceCookie($response);
 	}
 
