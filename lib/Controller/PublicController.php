@@ -26,6 +26,7 @@ use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IRequest;
+use OCP\Security\ISecureRandom;
 
 /**
  * The public page behind the shared link (normal helper view).
@@ -43,8 +44,47 @@ class PublicController extends Controller {
 		private CalendarService $calendar,
 		private IInitialState $initialState,
 		private ITimeFactory $time,
+		private ISecureRandom $random,
 	) {
 		parent::__construct(Application::APP_ID, $request);
+	}
+
+	/** Cookie that identifies this browser, so own entries stay manageable after a reload. */
+	private const DEVICE_COOKIE = 'helfer_device';
+
+	private ?string $deviceToken = null;
+	private bool $deviceTokenIsNew = false;
+
+	private function deviceToken(): string {
+		if ($this->deviceToken === null) {
+			$cookie = $this->request->getCookie(self::DEVICE_COOKIE);
+			if (is_string($cookie) && preg_match('/^[A-Za-z0-9]{40}$/', $cookie) === 1) {
+				$this->deviceToken = $cookie;
+			} else {
+				$this->deviceToken = $this->random->generate(40, ISecureRandom::CHAR_ALPHANUMERIC);
+				$this->deviceTokenIsNew = true;
+			}
+		}
+		return $this->deviceToken;
+	}
+
+	private function deviceHash(): string {
+		return hash('sha256', $this->deviceToken());
+	}
+
+	/**
+	 * @template T of Response
+	 * @param T $response
+	 * @return T
+	 */
+	private function withDeviceCookie(Response $response): Response {
+		$this->deviceToken();
+		if ($this->deviceTokenIsNew) {
+			$expires = $this->time->getDateTime('+1 year');
+			$response->addCookie(self::DEVICE_COOKIE, (string)$this->deviceToken, $expires, 'Lax');
+			$this->deviceTokenIsNew = false;
+		}
+		return $response;
 	}
 
 	/**
@@ -77,7 +117,7 @@ class PublicController extends Controller {
 		$response = new PublicTemplateResponse(Application::APP_ID, 'public');
 		$response->setHeaderTitle($event->getTitle());
 		$response->setFooterVisible(false);
-		return $response;
+		return $this->withDeviceCookie($response);
 	}
 
 	#[PublicPage]
@@ -92,7 +132,7 @@ class PublicController extends Controller {
 			$response->throttle();
 			return $response;
 		}
-		return new JSONResponse($this->publicData($event));
+		return $this->withDeviceCookie(new JSONResponse($this->publicData($event)));
 	}
 
 	/**
@@ -143,13 +183,13 @@ class PublicController extends Controller {
 			$response->throttle();
 			return $response;
 		}
-		return $this->handle(function () use ($event, $slotIds) {
-			$result = $this->signups->publicSignup($event, $slotIds, $this->request->getParams());
+		return $this->withDeviceCookie($this->handle(function () use ($event, $slotIds) {
+			$result = $this->signups->publicSignup($event, $slotIds, $this->request->getParams(), $this->deviceHash());
 			return array_merge($this->publicData($event), [
 				'editToken' => $result['editToken'],
 				'created' => array_map(static fn ($s) => $s->getId(), $result['signups']),
 			]);
-		});
+		}));
 	}
 
 	#[PublicPage]
@@ -165,7 +205,7 @@ class PublicController extends Controller {
 			return $response;
 		}
 		$response = $this->handle(function () use ($event, $signupId, $editToken) {
-			$this->signups->publicCancel($event, $signupId, $editToken);
+			$this->signups->publicCancel($event, $signupId, $editToken, $this->deviceHash());
 			return $this->publicData($event);
 		});
 		if ($response->getStatus() === Http::STATUS_NOT_FOUND) {
@@ -186,13 +226,13 @@ class PublicController extends Controller {
 			$response->throttle();
 			return $response;
 		}
-		return $this->handle(function () use ($event, $listId) {
-			$result = $this->donations->publicAdd($event, $listId, $this->request->getParams());
+		return $this->withDeviceCookie($this->handle(function () use ($event, $listId) {
+			$result = $this->donations->publicAdd($event, $listId, $this->request->getParams(), $this->deviceHash());
 			return array_merge($this->publicData($event), [
 				'editToken' => $result['editToken'],
 				'created' => [$result['donation']->getId()],
 			]);
-		});
+		}));
 	}
 
 	#[PublicPage]
@@ -208,7 +248,7 @@ class PublicController extends Controller {
 			return $response;
 		}
 		$response = $this->handle(function () use ($event, $donationId, $editToken) {
-			$this->donations->publicCancel($event, $donationId, $editToken);
+			$this->donations->publicCancel($event, $donationId, $editToken, $this->deviceHash());
 			return $this->publicData($event);
 		});
 		if ($response->getStatus() === Http::STATUS_NOT_FOUND) {
@@ -246,9 +286,9 @@ class PublicController extends Controller {
 			'shifts' => $full['shifts'],
 			'stations' => $full['stations'],
 			'slots' => $full['slots'],
-			'signups' => array_map(static fn ($s) => $s->toPublicArray($withNames), $full['signups']),
+			'signups' => array_map(fn ($s) => $s->toPublicArray($withNames, $this->deviceHash()), $full['signups']),
 			'donationLists' => $full['donationLists'],
-			'donations' => array_map(static fn ($d) => $d->toPublicArray($withNames), $full['donations']),
+			'donations' => array_map(fn ($d) => $d->toPublicArray($withNames, $this->deviceHash()), $full['donations']),
 		];
 	}
 }

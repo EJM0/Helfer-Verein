@@ -12,7 +12,7 @@
 - Schließungsdatum: danach wird der öffentliche Link geschlossen oder gelöscht, die Umfrage bleibt intern erhalten
 - Export als Excel-Datei mit zwei Tabellen (Helfer und Einsätze mit Name und Zeit) in einen Nextcloud-Ordner – manuell oder automatisch nach dem Enddatum
 ]]></description>
-	<version>1.2.0</version>
+	<version>1.4.0</version>
 	<licence>AGPL-3.0-or-later</licence>
 	<author mail="eliasjosefmaurer@gmail.com" homepage="https://eliasm.de">Elias Maurer</author>
 	<namespace>Helfer</namespace>

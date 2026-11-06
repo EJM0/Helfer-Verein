@@ -30,6 +30,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setAnswers(?string $answers)
  * @method string|null getEditToken()
  * @method void setEditToken(?string $editToken)
+ * @method string|null getDeviceHash()
+ * @method void setDeviceHash(?string $deviceHash)
  * @method string|null getCreatedBy()
  * @method void setCreatedBy(?string $createdBy)
  * @method int getCreatedAt()
@@ -46,6 +48,7 @@ class Signup extends Entity implements JsonSerializable {
 	protected $comment;
 	protected $answers;
 	protected $editToken;
+	protected $deviceHash;
 	protected $createdBy;
 	protected $createdAt = 0;
 
@@ -91,13 +94,19 @@ class Signup extends Entity implements JsonSerializable {
 		];
 	}
 
-	/** Reduced data for the public view: no contact details. */
-	public function toPublicArray(bool $withName): array {
+	/** Reduced data for the public view: no contact details. Own entries always show their name. */
+	public function toPublicArray(bool $withName, ?string $deviceHash = null): array {
+		$mine = $this->isFromDevice($deviceHash);
 		return [
 			'id' => $this->id,
 			'slotId' => $this->slotId,
-			'name' => $withName ? $this->name : null,
+			'name' => $withName || $mine ? $this->name : null,
 			'role' => $this->role ?? '',
+			'mine' => $mine,
 		];
+	}
+
+	public function isFromDevice(?string $deviceHash): bool {
+		return $deviceHash !== null && $this->deviceHash !== null && hash_equals($this->deviceHash, $deviceHash);
 	}
 }

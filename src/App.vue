@@ -18,7 +18,7 @@ import CreateDialog from './components/CreateDialog.vue'
 import { adminApi, errorMessage } from './api.ts'
 import { confirmAction } from './confirm.ts'
 import type { FullEvent, HelferEvent } from './types.ts'
-import { mdiHandHeart, mdiClipboardTextOutline, mdiDelete, mdiLockOutline, mdiPlus, mdiContentCopy } from './icons.ts'
+import { mdiHandHeart, mdiShareVariant, mdiClipboardTextOutline, mdiDelete, mdiLockOutline, mdiPlus, mdiContentCopy } from './icons.ts'
 
 const events = ref<HelferEvent[]>([])
 const loading = ref(true)
@@ -57,7 +57,7 @@ function onUpdated(data: FullEvent) {
 	current.value = data
 	const index = events.value.findIndex((e) => e.id === data.event.id)
 	const stats = computeStats(data)
-	const entry = { ...data.event, stats, publicUrl: data.publicUrl }
+	const entry = { ...data.event, stats, publicUrl: data.publicUrl, isOwner: data.isOwner, owner: data.owner }
 	if (index === -1) {
 		events.value.unshift(entry)
 	} else {
@@ -133,10 +133,11 @@ onMounted(async () => {
 				<NcAppNavigationItem v-for="event in events"
 					:key="event.id"
 					:name="event.title"
+					:title="event.isOwner === false && event.owner ? t('helfer', '{title} – geteilt von {owner}', { title: event.title, owner: event.owner.displayName }) : event.title"
 					:active="event.id === currentId"
 					@click="open(event.id)">
 					<template #icon>
-						<NcIconSvgWrapper :path="event.closed ? mdiLockOutline : mdiClipboardTextOutline" />
+						<NcIconSvgWrapper :path="event.closed ? mdiLockOutline : (event.isOwner === false ? mdiShareVariant : mdiClipboardTextOutline)" />
 					</template>
 					<template #counter>
 						<NcCounterBubble v-if="event.stats && event.stats.signups > 0" :count="event.stats.signups" />
@@ -148,7 +149,7 @@ onMounted(async () => {
 							</template>
 							{{ t('helfer', 'Kopieren') }}
 						</NcActionButton>
-						<NcActionButton close-after-click @click="remove(event)">
+						<NcActionButton v-if="event.isOwner !== false" close-after-click @click="remove(event)">
 							<template #icon>
 								<NcIconSvgWrapper :path="mdiDelete" />
 							</template>

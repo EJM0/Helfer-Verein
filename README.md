@@ -32,10 +32,22 @@ ganz ohne Nextcloud-Konto.
 - Von einem Gerät aus können **auch andere Personen mit eingetragen** werden (z. B. Familie, Freunde);
   bereits eingegebene Personen lassen sich per „Schnell eintragen“ für weitere Schichten übernehmen
 - **E-Mail-Adresse ist freiwillig** – kann pro Umfrage als Pflichtfeld eingestellt werden
-- Alles, was von diesem Gerät eingetragen wurde, kann bis zum Enddatum wieder ausgetragen werden
+- Alles, was von diesem Gerät eingetragen wurde, kann bis zum Enddatum wieder ausgetragen werden –
+  auch nach Neuladen oder Browser-Neustart: ein technisch notwendiges Cookie (`helfer_device`, HttpOnly,
+  1 Jahr gültig) erkennt das Gerät wieder; zusätzlich merkt sich der Browser die Einträge lokal
 - **Kalender-Import**: jede Schicht einzeln oder alle eigenen Schichten auf einmal als `.ics`-Datei
   (funktioniert mit Nextcloud Kalender, Google, Apple, Outlook, Thunderbird), inkl. Erinnerung 1 Stunde vorher
 - Namen der Helfer optional sichtbar
+
+**Intern teilen**
+
+- Umfragen lassen sich im Tab „Teilen“ mit anderen Nextcloud-**Benutzern** und **Gruppen** teilen
+  (die Suche beachtet die Freigabe-Einstellungen des Servers)
+- Geteilte Personen können **alles bearbeiten** (Schichten, Stände, Helfer, Spenden, Einstellungen, Link)
+  **außer dem Export-Pfad** – der liegt in den Dateien des Besitzers. Sie können aber jederzeit in
+  ihre eigenen Dateien exportieren oder herunterladen
+- Löschen der Umfrage und Teilen bleiben dem Besitzer vorbehalten
+- Neue Freigaben erscheinen als Nextcloud-Benachrichtigung
 
 **Termine**
 

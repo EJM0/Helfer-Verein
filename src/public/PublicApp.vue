@@ -42,7 +42,25 @@ const onlyFree = ref(false)
 const event = computed(() => data.value?.event)
 const tz = computed(() => event.value?.timezone)
 const writable = computed(() => !!event.value && !event.value.ended && !event.value.closed)
-const ownById = computed(() => new Map(own.value.map((o) => [o.id, o])))
+// Own entries: remembered in this browser and/or recognised by the server via the device cookie.
+const ownById = computed(() => {
+	const map = new Map<number, OwnSignup>(own.value.map((o) => [o.id, o]))
+	for (const signup of data.value?.signups ?? []) {
+		if (signup.mine && !map.has(signup.id)) {
+			map.set(signup.id, { id: signup.id, editToken: '', slotId: signup.slotId, name: signup.name ?? undefined })
+		}
+	}
+	return map
+})
+const ownDonationsAll = computed(() => {
+	const list = [...ownDonations.value]
+	for (const donation of data.value?.donations ?? []) {
+		if (donation.mine && !list.some((o) => o.id === donation.id)) {
+			list.push({ id: donation.id, editToken: '', name: donation.name ?? undefined })
+		}
+	}
+	return list
+})
 
 const days = computed(() => {
 	const groups: { key: string, label: string, shifts: Shift[] }[] = []
@@ -214,7 +232,7 @@ async function donate(payload: Record<string, unknown>) {
 }
 
 async function cancelDonation(donation: Donation) {
-	const entry = ownDonations.value.find((o) => o.id === donation.id)
+	const entry = ownDonationsAll.value.find((o) => o.id === donation.id)
 	if (!entry || !await confirmAction(t('helfer', 'Spende austragen'), t('helfer', '„{item}“ wieder austragen?', { item: donation.item }), t('helfer', 'Austragen'))) {
 		return
 	}
@@ -331,7 +349,7 @@ onMounted(load)
 				<DonationListCard ref="donationCards"
 					:list="list"
 					:donations="data.donations.filter((d) => d.listId === list.id)"
-					:own="ownDonations"
+					:own="ownDonationsAll"
 					:event="event"
 					:writable="writable"
 					:submitting="submitting"

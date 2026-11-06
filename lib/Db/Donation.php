@@ -24,6 +24,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setComment(?string $comment)
  * @method string|null getEditToken()
  * @method void setEditToken(?string $editToken)
+ * @method string|null getDeviceHash()
+ * @method void setDeviceHash(?string $deviceHash)
  * @method string|null getCreatedBy()
  * @method void setCreatedBy(?string $createdBy)
  * @method int getCreatedAt()
@@ -37,6 +39,7 @@ class Donation extends Entity implements JsonSerializable {
 	protected $email;
 	protected $comment;
 	protected $editToken;
+	protected $deviceHash;
 	protected $createdBy;
 	protected $createdAt = 0;
 
@@ -60,12 +63,18 @@ class Donation extends Entity implements JsonSerializable {
 		];
 	}
 
-	public function toPublicArray(bool $withName): array {
+	public function toPublicArray(bool $withName, ?string $deviceHash = null): array {
+		$mine = $this->isFromDevice($deviceHash);
 		return [
 			'id' => $this->id,
 			'listId' => $this->listId,
 			'item' => $this->item,
-			'name' => $withName ? $this->name : null,
+			'name' => $withName || $mine ? $this->name : null,
+			'mine' => $mine,
 		];
+	}
+
+	public function isFromDevice(?string $deviceHash): bool {
+		return $deviceHash !== null && $this->deviceHash !== null && hash_equals($this->deviceHash, $deviceHash);
 	}
 }

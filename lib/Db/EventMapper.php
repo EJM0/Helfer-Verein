@@ -33,6 +33,21 @@ class EventMapper extends QBMapper {
 		return $this->findEntity($qb);
 	}
 
+	/**
+	 * @param list<int> $ids
+	 * @return list<Event>
+	 */
+	public function findByIds(array $ids): array {
+		if ($ids === []) {
+			return [];
+		}
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')->from($this->getTableName())
+			->where($qb->expr()->in('id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)))
+			->orderBy('created_at', 'DESC');
+		return $this->findEntities($qb);
+	}
+
 	/** @return list<Event> */
 	public function findByOwner(string $uid): array {
 		$qb = $this->db->getQueryBuilder();

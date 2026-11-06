@@ -37,7 +37,7 @@ class SignupService {
 	 * @return array{signups: list<Signup>, editToken: string}
 	 * @throws ValidationException
 	 */
-	public function publicSignup(Event $event, array $slotIds, array $data): array {
+	public function publicSignup(Event $event, array $slotIds, array $data, ?string $deviceHash = null): array {
 		$this->assertPublicWritable($event);
 		$slotIds = array_values(array_unique(array_map(static fn (mixed $v): int => is_numeric($v) ? (int)$v : 0, $slotIds)));
 		if ($slotIds === []) {
@@ -76,6 +76,7 @@ class SignupService {
 				$signup->setSlotId($slot->getId());
 				$this->applyFields($signup, $fields);
 				$signup->setEditToken($hashed);
+				$signup->setDeviceHash($deviceHash);
 				$signup->setCreatedAt($now);
 				$created[] = $this->signups->insert($signup);
 			}
@@ -92,11 +93,12 @@ class SignupService {
 	 *
 	 * @throws ValidationException|NotFoundException
 	 */
-	public function publicCancel(Event $event, int $signupId, string $editToken): void {
+	public function publicCancel(Event $event, int $signupId, string $editToken, ?string $deviceHash = null): void {
 		$this->assertPublicWritable($event);
 		$signup = $this->findSignup($event, $signupId);
 		$stored = $signup->getEditToken();
-		if ($stored === null || $editToken === '' || !hash_equals($stored, hash('sha256', $editToken))) {
+		$byToken = $stored !== null && $editToken !== '' && hash_equals($stored, hash('sha256', $editToken));
+		if (!$byToken && !$signup->isFromDevice($deviceHash)) {
 			throw new NotFoundException();
 		}
 		$this->signups->delete($signup);

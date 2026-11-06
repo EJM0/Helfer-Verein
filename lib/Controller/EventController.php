@@ -9,7 +9,9 @@ use OCA\Helfer\Service\CalendarService;
 use OCA\Helfer\Service\DonationService;
 use OCA\Helfer\Service\EventService;
 use OCA\Helfer\Service\ExportService;
+use OCA\Helfer\Service\ShareService;
 use OCA\Helfer\Service\SignupService;
+use OCA\Helfer\Service\ValidationException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
@@ -18,6 +20,7 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\AppFramework\Http\Response;
+use OCP\IL10N;
 use OCP\IRequest;
 use OCP\IURLGenerator;
 use OCP\IUserSession;
@@ -37,8 +40,10 @@ class EventController extends Controller {
 		private DonationService $donations,
 		private ExportService $export,
 		private CalendarService $calendar,
+		private ShareService $shares,
 		private IUserSession $userSession,
 		private IURLGenerator $urlGenerator,
+		private IL10N $l,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -54,7 +59,17 @@ class EventController extends Controller {
 	private function full(\OCA\Helfer\Db\Event $event): array {
 		$data = $this->events->getFull($event);
 		$data['publicUrl'] = $this->publicUrl($event->getToken());
+		$data['isOwner'] = $this->events->isOwner($event, $this->uid());
+		$data['owner'] = $this->shares->ownerInfo($event);
+		$data['shares'] = $this->shares->list($event);
 		return $data;
+	}
+
+	/** @throws ValidationException */
+	private function requireOwner(\OCA\Helfer\Db\Event $event, string $message): void {
+		if (!$this->events->isOwner($event, $this->uid())) {
+			throw new ValidationException($message);
+		}
 	}
 
 	private function publicUrl(?string $token): ?string {
@@ -73,6 +88,8 @@ class EventController extends Controller {
 				$result[] = array_merge($event->jsonSerialize(), [
 					'stats' => $this->events->getStats($event),
 					'publicUrl' => $this->publicUrl($event->getToken()),
+					'isOwner' => $this->events->isOwner($event, $this->uid()),
+					'owner' => $this->shares->ownerInfo($event),
 				]);
 			}
 			return $result;
@@ -96,7 +113,7 @@ class EventController extends Controller {
 	public function update(int $id): JSONResponse {
 		return $this->handle(function () use ($id) {
 			$event = $this->events->getForUser($id, $this->uid());
-			return $this->full($this->events->update($event, $this->request->getParams()));
+			return $this->full($this->events->update($event, $this->request->getParams(), $this->uid()));
 		});
 	}
 
@@ -104,7 +121,9 @@ class EventController extends Controller {
 	#[FrontpageRoute(verb: 'DELETE', url: '/api/events/{id}', requirements: ['id' => '\d+'])]
 	public function destroy(int $id): JSONResponse {
 		return $this->handle(function () use ($id) {
-			$this->events->delete($this->events->getForUser($id, $this->uid()));
+			$event = $this->events->getForUser($id, $this->uid());
+			$this->requireOwner($event, $this->l->t('Nur der Besitzer kann die Umfrage löschen.'));
+			$this->events->delete($event);
 			return ['status' => 'ok'];
 		});
 	}
@@ -236,6 +255,36 @@ class EventController extends Controller {
 		});
 	}
 
+	// ---- sharing ------------------------------------------------------------
+
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'GET', url: '/api/sharees')]
+	public function sharees(string $search = ''): JSONResponse {
+		return $this->handle(fn () => $this->shares->search(trim($search), $this->uid()));
+	}
+
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'POST', url: '/api/events/{id}/shares', requirements: ['id' => '\d+'])]
+	public function addShare(int $id, string $type = 'user', string $shareWith = ''): JSONResponse {
+		return $this->handle(function () use ($id, $type, $shareWith) {
+			$event = $this->events->getForUser($id, $this->uid());
+			$this->requireOwner($event, $this->l->t('Nur der Besitzer kann die Umfrage teilen.'));
+			$this->shares->add($event, $type, $shareWith, $this->uid());
+			return $this->full($event);
+		});
+	}
+
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'DELETE', url: '/api/events/{id}/shares/{shareId}', requirements: ['id' => '\d+', 'shareId' => '\d+'])]
+	public function removeShare(int $id, int $shareId): JSONResponse {
+		return $this->handle(function () use ($id, $shareId) {
+			$event = $this->events->getForUser($id, $this->uid());
+			$this->requireOwner($event, $this->l->t('Nur der Besitzer kann Freigaben entfernen.'));
+			$this->shares->remove($event, $shareId);
+			return $this->full($event);
+		});
+	}
+
 	// ---- donation lists -----------------------------------------------------
 
 	#[NoAdminRequired]
@@ -307,7 +356,7 @@ class EventController extends Controller {
 	public function exportToFolder(int $id, ?string $folder = null): JSONResponse {
 		return $this->handle(function () use ($id, $folder) {
 			$event = $this->events->getForUser($id, $this->uid());
-			$path = $this->export->exportToFolder($event, $folder);
+			$path = $this->export->exportToFolder($event, $folder, $this->uid());
 			$event = $this->events->getForUser($id, $this->uid());
 			return array_merge($this->full($event), ['path' => $path]);
 		});

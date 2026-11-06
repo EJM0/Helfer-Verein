@@ -1,3 +1,8 @@
+export interface Owner {
+	uid: string
+	displayName: string
+}
+
 export interface Question {
 	id: string
 	label: string
@@ -36,6 +41,21 @@ export interface HelferEvent {
 	closed: boolean
 	stats?: { needed: number, filled: number, signups: number }
 	publicUrl?: string | null
+	isOwner?: boolean
+	owner?: Owner
+}
+
+export interface ShareEntry {
+	id: number
+	type: 'user' | 'group'
+	shareWith: string
+	displayName: string
+}
+
+export interface Sharee {
+	type: 'user' | 'group'
+	shareWith: string
+	displayName: string
 }
 
 export interface Shift {
@@ -75,6 +95,8 @@ export interface Signup {
 	answers?: Record<string, string>
 	createdBy?: string | null
 	createdAt?: number
+	/** public view: created from this browser (device cookie) */
+	mine?: boolean
 }
 
 export interface DonationList {
@@ -94,6 +116,7 @@ export interface Donation {
 	email?: string
 	comment?: string
 	createdBy?: string | null
+	mine?: boolean
 }
 
 export interface FullEvent {
@@ -105,6 +128,9 @@ export interface FullEvent {
 	donationLists: DonationList[]
 	donations: Donation[]
 	publicUrl: string | null
+	isOwner: boolean
+	owner: Owner
+	shares: ShareEntry[]
 }
 
 export type PublicEvent = Pick<HelferEvent, 'title' | 'description' | 'location' | 'contact' | 'contactEmail' | 'organizer' | 'startDate' | 'timezone' | 'endDate'

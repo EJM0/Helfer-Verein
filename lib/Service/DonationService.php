@@ -92,7 +92,7 @@ class DonationService {
 	 * @return array{donation: Donation, editToken: string}
 	 * @throws ValidationException|NotFoundException
 	 */
-	public function publicAdd(Event $event, int $listId, array $data): array {
+	public function publicAdd(Event $event, int $listId, array $data, ?string $deviceHash = null): array {
 		$this->signups->assertPublicWritable($event);
 		$list = $this->findList($event, $listId);
 		$plainToken = $this->random->generate(32, ISecureRandom::CHAR_ALPHANUMERIC);
@@ -101,16 +101,18 @@ class DonationService {
 		$donation->setListId($list->getId());
 		$this->applyDonation($event, $donation, $data, false);
 		$donation->setEditToken(hash('sha256', $plainToken));
+		$donation->setDeviceHash($deviceHash);
 		$donation->setCreatedAt($this->time->getTime());
 		return ['donation' => $this->donations->insert($donation), 'editToken' => $plainToken];
 	}
 
 	/** @throws ValidationException|NotFoundException */
-	public function publicCancel(Event $event, int $donationId, string $editToken): void {
+	public function publicCancel(Event $event, int $donationId, string $editToken, ?string $deviceHash = null): void {
 		$this->signups->assertPublicWritable($event);
 		$donation = $this->findDonation($event, $donationId);
 		$stored = $donation->getEditToken();
-		if ($stored === null || $editToken === '' || !hash_equals($stored, hash('sha256', $editToken))) {
+		$byToken = $stored !== null && $editToken !== '' && hash_equals($stored, hash('sha256', $editToken));
+		if (!$byToken && !$donation->isFromDevice($deviceHash)) {
 			throw new NotFoundException();
 		}
 		$this->donations->delete($donation);

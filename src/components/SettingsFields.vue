@@ -31,7 +31,7 @@ export interface SettingsDraft {
 	publicNames: boolean
 }
 
-const props = defineProps<{ full?: boolean }>()
+const props = defineProps<{ full?: boolean, exportLockedBy?: string | null }>()
 const draft = defineModel<SettingsDraft>({ required: true })
 
 async function chooseFolder() {
@@ -109,12 +109,13 @@ function removeQuestion(index: number) {
 		<h3>{{ t('helfer', 'Export') }}</h3>
 		<div class="settings-fields__folder">
 			<NcTextField v-model="draft.exportFolder"
+				:disabled="!!props.exportLockedBy"
 				:label="t('helfer', 'Ziel-Ordner für den Export')"
 				:placeholder="t('helfer', 'z. B. /Verein/Helferlisten')"
 				:trailing-button-label="t('helfer', 'Ordner leeren')"
-				:show-trailing-button="draft.exportFolder !== ''"
+				:show-trailing-button="draft.exportFolder !== '' && !props.exportLockedBy"
 				@trailing-button-click="draft.exportFolder = ''" />
-			<NcButton class="settings-fields__folderbutton" @click="chooseFolder">
+			<NcButton v-if="!props.exportLockedBy" class="settings-fields__folderbutton" @click="chooseFolder">
 				<template #icon>
 					<NcIconSvgWrapper :path="mdiFolderOutline" />
 				</template>
@@ -122,7 +123,10 @@ function removeQuestion(index: number) {
 			</NcButton>
 		</div>
 		<p class="settings-fields__hint">
-			<template v-if="draft.exportFolder && draft.endDate">
+			<template v-if="props.exportLockedBy">
+				{{ t('helfer', 'Der Export-Pfad liegt in den Dateien von {owner} und kann nur dort geändert werden. Über „Exportieren …“ kannst du jederzeit in deine eigenen Dateien exportieren.', { owner: props.exportLockedBy }) }}
+			</template>
+			<template v-else-if="draft.exportFolder && draft.endDate">
 				{{ t('helfer', 'Die Helferliste wird nach dem Enddatum automatisch als Excel-Datei in diesen Ordner exportiert.') }}
 			</template>
 			<template v-else-if="draft.exportFolder">

@@ -14,6 +14,7 @@ import PlanBoard from './PlanBoard.vue'
 import StructureEditor from './StructureEditor.vue'
 import HelperTable from './HelperTable.vue'
 import DonationEditor from './DonationEditor.vue'
+import SharePanel from './SharePanel.vue'
 import SettingsFields from './SettingsFields.vue'
 import { draftFromEvent, draftToPayload } from './draft.ts'
 import { adminApi, errorMessage } from '../api.ts'
@@ -22,14 +23,14 @@ import { confirmAction } from '../confirm.ts'
 import { formatDateTime } from '../time.ts'
 import type { FullEvent } from '../types.ts'
 import {
-	mdiAccountGroup, mdiCalendarClock, mdiCalendarExport, mdiGift, mdiCog, mdiContentCopy, mdiDownload, mdiFolderOutline, mdiLinkVariant,
+	mdiAccountGroup, mdiCalendarClock, mdiCalendarExport, mdiGift, mdiShareVariant, mdiCog, mdiContentCopy, mdiDownload, mdiFolderOutline, mdiLinkVariant,
 	mdiLinkVariantOff, mdiOpenInNew, mdiRefresh, mdiTableArrowRight, mdiStorefrontOutline,
 } from '../icons.ts'
 
 const props = defineProps<{ data: FullEvent }>()
 const emit = defineEmits<{ update: [data: FullEvent] }>()
 
-type Tab = 'plan' | 'structure' | 'helpers' | 'donations' | 'settings'
+type Tab = 'plan' | 'structure' | 'helpers' | 'donations' | 'share' | 'settings'
 const tab = ref<Tab>(props.data.shifts.length === 0 || props.data.stations.length === 0 ? 'structure' : 'plan')
 const event = computed(() => props.data.event)
 const tz = computed(() => event.value.timezone)
@@ -69,6 +70,9 @@ const exportInfo = computed(() => {
 	}
 	if (!event.value.exportPath) {
 		return t('helfer', 'Automatischer Export am {date} fehlgeschlagen. Bitte Ordner prüfen und manuell exportieren.', { date: formatDateTime(event.value.exportedAt, tz.value) })
+	}
+	if (!props.data.isOwner) {
+		return t('helfer', 'Automatischer Export am {date} in die Dateien von {owner}', { date: formatDateTime(event.value.exportedAt, tz.value), owner: props.data.owner.displayName })
 	}
 	return t('helfer', 'Zuletzt exportiert am {date} nach {path}', { date: formatDateTime(event.value.exportedAt, tz.value), path: event.value.exportPath })
 })
@@ -123,7 +127,8 @@ async function removeLink() {
 }
 
 async function exportNow(choose: boolean) {
-	let folder: string | undefined = event.value.exportFolder ?? undefined
+	// Shared users export into a folder of their own files.
+	let folder: string | undefined = props.data.isOwner ? (event.value.exportFolder ?? undefined) : undefined
 	if (choose || !folder) {
 		const picked = await pickFolder(folder)
 		if (picked === null) {
@@ -168,6 +173,9 @@ function openExportedFile() {
 		<header class="event-view__header">
 			<div class="event-view__title">
 				<h2>{{ event.title }}</h2>
+				<p v-if="!data.isOwner" class="event-view__meta">
+					{{ t('helfer', 'Geteilt von {owner}', { owner: data.owner.displayName }) }}
+				</p>
 				<p class="event-view__meta">
 					<span v-if="filled.needed > 0">
 						{{ t('helfer', '{have} von {needed} Plätzen belegt', { have: filled.have, needed: filled.needed }) }}
@@ -183,10 +191,10 @@ function openExportedFile() {
 					<template #icon>
 						<NcIconSvgWrapper :path="mdiTableArrowRight" />
 					</template>
-					{{ event.exportFolder ? t('helfer', 'In Ordner exportieren') : t('helfer', 'Exportieren …') }}
+					{{ event.exportFolder && data.isOwner ? t('helfer', 'In Ordner exportieren') : t('helfer', 'Exportieren …') }}
 				</NcButton>
 				<NcActions>
-					<NcActionButton close-after-click @click="exportNow(true)">
+					<NcActionButton v-if="data.isOwner" close-after-click @click="exportNow(true)">
 						<template #icon>
 							<NcIconSvgWrapper :path="mdiFolderOutline" />
 						</template>
@@ -211,7 +219,7 @@ function openExportedFile() {
 		<NcNoteCard v-if="status" :type="status.type" :text="status.text" />
 		<p v-if="exportInfo" class="event-view__exportinfo">
 			{{ exportInfo }}
-			<a v-if="event.exportPath" href="#" @click.prevent="openExportedFile">{{ t('helfer', 'Ordner öffnen') }}</a>
+			<a v-if="event.exportPath && data.isOwner" href="#" @click.prevent="openExportedFile">{{ t('helfer', 'Ordner öffnen') }}</a>
 		</p>
 
 		<section class="event-view__link">
@@ -298,6 +306,15 @@ function openExportedFile() {
 				</template>
 				{{ t('helfer', 'Spenden') }}
 			</NcButton>
+			<NcButton :variant="tab === 'share' ? 'primary' : 'tertiary'"
+				role="tab"
+				:aria-selected="tab === 'share'"
+				@click="tab = 'share'">
+				<template #icon>
+					<NcIconSvgWrapper :path="mdiShareVariant" />
+				</template>
+				{{ t('helfer', 'Teilen') }}
+			</NcButton>
 			<NcButton :variant="tab === 'settings' ? 'primary' : 'tertiary'"
 				role="tab"
 				:aria-selected="tab === 'settings'"
@@ -316,8 +333,9 @@ function openExportedFile() {
 		<StructureEditor v-else-if="tab === 'structure'" :data="data" @update="(d) => emit('update', d)" />
 		<HelperTable v-else-if="tab === 'helpers'" :data="data" @update="(d) => emit('update', d)" />
 		<DonationEditor v-else-if="tab === 'donations'" :data="data" @update="(d) => emit('update', d)" />
+		<SharePanel v-else-if="tab === 'share'" :data="data" @update="(d) => emit('update', d)" />
 		<form v-else class="event-view__settings" @submit.prevent="save">
-			<SettingsFields v-model="draft" full />
+			<SettingsFields v-model="draft" full :export-locked-by="data.isOwner ? null : data.owner.displayName" />
 			<div class="event-view__save">
 				<NcButton variant="primary" type="submit" :disabled="saving">
 					{{ t('helfer', 'Speichern') }}

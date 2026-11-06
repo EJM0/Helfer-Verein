@@ -1,6 +1,6 @@
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import type { FullEvent, HelferEvent, PublicData } from './types.ts'
+import type { FullEvent, HelferEvent, PublicData, Sharee } from './types.ts'
 
 const base = (path: string) => generateUrl('/apps/helfer' + path)
 
@@ -64,6 +64,15 @@ export const adminApi = {
 	},
 	async deleteSignup(id: number, signupId: number): Promise<FullEvent> {
 		return (await axios.delete(base(`/api/events/${id}/signups/${signupId}`))).data
+	},
+	async sharees(search: string): Promise<Sharee[]> {
+		return (await axios.get(base('/api/sharees'), { params: { search } })).data
+	},
+	async addShare(id: number, type: string, shareWith: string): Promise<FullEvent> {
+		return (await axios.post(base(`/api/events/${id}/shares`), { type, shareWith })).data
+	},
+	async removeShare(id: number, shareId: number): Promise<FullEvent> {
+		return (await axios.delete(base(`/api/events/${id}/shares/${shareId}`))).data
 	},
 	async addDonationList(id: number, data: object): Promise<FullEvent> {
 		return (await axios.post(base(`/api/events/${id}/donation-lists`), data)).data

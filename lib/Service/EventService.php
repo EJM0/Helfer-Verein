@@ -10,6 +10,7 @@ use OCA\Helfer\Db\DonationListMapper;
 use OCA\Helfer\Db\DonationMapper;
 use OCA\Helfer\Db\Event;
 use OCA\Helfer\Db\EventMapper;
+use OCA\Helfer\Db\ShareMapper;
 use OCA\Helfer\Db\Shift;
 use OCA\Helfer\Db\ShiftMapper;
 use OCA\Helfer\Db\Signup;
@@ -24,7 +25,9 @@ use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException as FileNotFoundException;
 use OCP\IDBConnection;
+use OCP\IGroupManager;
 use OCP\IL10N;
+use OCP\IUserManager;
 use OCP\Security\ISecureRandom;
 
 class EventService {
@@ -36,6 +39,9 @@ class EventService {
 		private SignupMapper $signups,
 		private DonationListMapper $donationLists,
 		private DonationMapper $donations,
+		private ShareMapper $shares,
+		private IGroupManager $groupManager,
+		private IUserManager $userManager,
 		private IRootFolder $rootFolder,
 		private ISecureRandom $random,
 		private ITimeFactory $time,
@@ -44,9 +50,33 @@ class EventService {
 	) {
 	}
 
-	/** @return list<Event> */
+	/**
+	 * Own surveys and surveys shared with the user (directly or via a group).
+	 *
+	 * @return list<Event>
+	 */
 	public function listForUser(string $uid): array {
-		return $this->events->findByOwner($uid);
+		$own = $this->events->findByOwner($uid);
+		$ownIds = array_map(static fn (Event $e) => $e->getId(), $own);
+		$sharedIds = array_values(array_diff($this->sharedEventIds($uid), $ownIds));
+		$all = array_merge($own, $this->events->findByIds($sharedIds));
+		usort($all, static fn (Event $a, Event $b) => $b->getCreatedAt() <=> $a->getCreatedAt());
+		return $all;
+	}
+
+	public function isOwner(Event $event, string $uid): bool {
+		return $event->getOwnerUid() === $uid;
+	}
+
+	public function canAccess(Event $event, string $uid): bool {
+		return $this->isOwner($event, $uid) || in_array($event->getId(), $this->sharedEventIds($uid), true);
+	}
+
+	/** @return list<int> */
+	private function sharedEventIds(string $uid): array {
+		$user = $this->userManager->get($uid);
+		$groupIds = $user !== null ? array_values(array_map('strval', $this->groupManager->getUserGroupIds($user))) : [];
+		return $this->shares->findEventIdsFor($uid, $groupIds);
 	}
 
 	/**
@@ -77,7 +107,7 @@ class EventService {
 		} catch (DoesNotExistException) {
 			throw new NotFoundException();
 		}
-		if ($event->getOwnerUid() !== $uid) {
+		if (!$this->canAccess($event, $uid)) {
 			throw new NotFoundException();
 		}
 		return $event;
@@ -123,8 +153,15 @@ class EventService {
 		return $this->events->insert($event);
 	}
 
-	/** @throws ValidationException */
-	public function update(Event $event, array $data): Event {
+	/**
+	 * Everybody with access may edit; only the owner may change the export folder (it lives in the owner's files).
+	 *
+	 * @throws ValidationException
+	 */
+	public function update(Event $event, array $data, string $uid): Event {
+		if (!$this->isOwner($event, $uid)) {
+			unset($data['exportFolder']);
+		}
 		$oldClose = $event->getCloseDate();
 		$this->apply($event, $data, false);
 		$now = $this->time->getTime();
@@ -143,6 +180,7 @@ class EventService {
 		try {
 			$id = $event->getId();
 			$this->signups->deleteByEvent($id);
+			$this->shares->deleteByEvent($id);
 			$this->donations->deleteByColumn('event_id', $id);
 			$this->donationLists->deleteByColumn('event_id', $id);
 			$this->slots->deleteByEvent($id);
@@ -160,6 +198,7 @@ class EventService {
 		foreach ($this->events->findByOwner($uid) as $event) {
 			$this->delete($event);
 		}
+		$this->shares->deleteByShareWith(\OCA\Helfer\Db\Share::TYPE_USER, $uid);
 	}
 
 	/** Create a copy of the event structure (without helpers). */
@@ -175,6 +214,10 @@ class EventService {
 			}
 			$copy->setTitle($this->l->t('%s (Kopie)', [$source->getTitle()]));
 			$copy->setOwnerUid($uid);
+			if (!$this->isOwner($source, $uid)) {
+				// The export folder belongs to the files of the original owner.
+				$copy->setExportFolder(null);
+			}
 			$copy->setToken($this->generateToken());
 			$copy->setCreatedAt($now);
 			$copy->setUpdatedAt($now);

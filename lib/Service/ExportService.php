@@ -278,13 +278,18 @@ class ExportService {
 	 * @return string path of the written file relative to the user's home
 	 * @throws ValidationException
 	 */
-	public function exportToFolder(Event $event, ?string $folderPath = null): string {
+	public function exportToFolder(Event $event, ?string $folderPath = null, ?string $uid = null): string {
+		$uid ??= $event->getOwnerUid();
+		$isOwner = $uid === $event->getOwnerUid();
+		if (!$isOwner && ($folderPath === null || $folderPath === '')) {
+			throw new ValidationException($this->l->t('Bitte einen Ordner in deinen Dateien auswählen.'));
+		}
 		$folderPath ??= $event->getExportFolder();
 		if ($folderPath === null || $folderPath === '') {
 			throw new ValidationException($this->l->t('Bitte einen Export-Ordner auswählen.'));
 		}
 		$folderPath = '/' . trim($folderPath, '/');
-		$folder = $this->eventService->assertFolderWritable($event->getOwnerUid(), $folderPath);
+		$folder = $this->eventService->assertFolderWritable($uid, $folderPath);
 		$content = $this->build($event);
 		$name = $this->fileName($event);
 		if ($folder->nodeExists($name)) {
@@ -297,7 +302,10 @@ class ExportService {
 			$file = $folder->newFile($name, $content);
 		}
 		$path = rtrim($folderPath, '/') . '/' . $name;
-		$this->eventService->markExported($event, $path);
+		// Only exports into the owner's files count for the automatic export bookkeeping.
+		if ($isOwner) {
+			$this->eventService->markExported($event, $path);
+		}
 		return $path;
 	}
 }

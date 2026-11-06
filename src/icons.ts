@@ -28,6 +28,8 @@ export {
 	mdiClose,
 	mdiGift,
 	mdiHandHeart,
+	mdiShareVariant,
+	mdiAccountMultipleOutline,
 	mdiInformationOutline,
 	mdiNoteTextOutline,
 	mdiFilterVariant,
