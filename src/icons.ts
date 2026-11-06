@@ -27,6 +27,7 @@ export {
 	mdiCalendarExport,
 	mdiClose,
 	mdiGift,
+	mdiHandHeart,
 	mdiInformationOutline,
 	mdiNoteTextOutline,
 	mdiFilterVariant,

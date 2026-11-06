@@ -18,7 +18,7 @@ import CreateDialog from './components/CreateDialog.vue'
 import { adminApi, errorMessage } from './api.ts'
 import { confirmAction } from './confirm.ts'
 import type { FullEvent, HelferEvent } from './types.ts'
-import { mdiAccountGroup, mdiClipboardTextOutline, mdiDelete, mdiLockOutline, mdiPlus, mdiContentCopy } from './icons.ts'
+import { mdiHandHeart, mdiClipboardTextOutline, mdiDelete, mdiLockOutline, mdiPlus, mdiContentCopy } from './icons.ts'
 
 const events = ref<HelferEvent[]>([])
 const loading = ref(true)
@@ -171,7 +171,7 @@ onMounted(async () => {
 				:name="t('helfer', 'Noch keine Umfrage')"
 				:description="t('helfer', 'Lege eine Umfrage für deine Veranstaltung an, plane Schichten und Stände und teile den Link mit deinen Helfern.')">
 				<template #icon>
-					<NcIconSvgWrapper :path="mdiAccountGroup" />
+					<NcIconSvgWrapper :path="mdiHandHeart" />
 				</template>
 				<template #action>
 					<NcButton variant="primary" @click="showCreate = true">
