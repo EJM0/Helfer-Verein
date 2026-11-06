@@ -21,6 +21,7 @@ export interface HelferEvent {
 	exportedAt: number | null
 	exportPath: string | null
 	askEmail: boolean
+	emailRequired: boolean
 	askPhone: boolean
 	askGroup: boolean
 	groupOptions: string[]
@@ -83,7 +84,7 @@ export interface FullEvent {
 }
 
 export type PublicEvent = Pick<HelferEvent, 'title' | 'description' | 'location' | 'contact' | 'timezone' | 'endDate'
-	| 'closeDate' | 'ended' | 'closed' | 'askEmail' | 'askPhone' | 'askGroup' | 'groupOptions' | 'questions' | 'publicNames'>
+	| 'closeDate' | 'ended' | 'closed' | 'askEmail' | 'emailRequired' | 'askPhone' | 'askGroup' | 'groupOptions' | 'questions' | 'publicNames'>
 
 export interface PublicData {
 	event: PublicEvent

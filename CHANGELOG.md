@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-11-06
+
+### Added
+
+- Eintragen direkt in der Schicht: Name beim freien Platz eingeben statt Auswahl + Formular
+- Mehrere Personen von einem Gerät eintragen, „Schnell eintragen“ für bekannte Personen
+- Kalender-Import (.ics) für einzelne Schichten, alle eigenen Schichten und (Verwaltung) alle Schichten
+- E-Mail-Adresse ist freiwillig und kann pro Umfrage als Pflicht eingestellt werden
+
+### Changed
+
+- Durchgehend Nextcloud-Komponenten (NcSelect, NcTextField, NcChip, Nextcloud-Bestätigungsdialoge)
+
 ## [1.0.0] - 2026-11-06
 
 ### Added

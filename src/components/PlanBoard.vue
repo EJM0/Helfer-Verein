@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { t } from '@nextcloud/l10n'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcChip from '@nextcloud/vue/components/NcChip'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import SignupDialog from './SignupDialog.vue'
 import { useSignupEditor } from './useSignupEditor.ts'
 import { dayKey, formatDay, formatRange } from '../time.ts'
 import type { FullEvent, Shift } from '../types.ts'
-import { mdiAccountPlus, mdiCalendarClock } from '../icons.ts'
+import { mdiAccountPlus, mdiCalendarClock, mdiDelete, mdiPencil } from '../icons.ts'
 
 const props = defineProps<{ data: FullEvent }>()
 const emit = defineEmits<{ update: [data: FullEvent], editStructure: [] }>()
@@ -78,10 +80,22 @@ function rows(shift: Shift) {
 						</div>
 						<ul class="plan__people">
 							<li v-for="signup in row.signups" :key="signup.id">
-								<button class="plan__person" :title="t('helfer', 'Bearbeiten')" @click="editor.edit(signup)">
-									{{ signup.name }}
-									<em v-if="signup.role">{{ signup.role }}</em>
-								</button>
+								<NcChip :text="signup.name + (signup.role ? ' · ' + signup.role : '')" no-close>
+									<template #actions>
+										<NcActionButton close-after-click @click="editor.edit(signup)">
+											<template #icon>
+												<NcIconSvgWrapper :path="mdiPencil" />
+											</template>
+											{{ t('helfer', 'Bearbeiten') }}
+										</NcActionButton>
+										<NcActionButton close-after-click @click="editor.remove(signup)">
+											<template #icon>
+												<NcIconSvgWrapper :path="mdiDelete" />
+											</template>
+											{{ t('helfer', 'Austragen') }}
+										</NcActionButton>
+									</template>
+								</NcChip>
 							</li>
 							<li>
 								<NcButton variant="tertiary"
@@ -183,22 +197,5 @@ function rows(shift: Shift) {
 	gap: 4px;
 	align-items: center;
 	margin-top: 4px;
-}
-
-.plan__person {
-	margin: 0;
-	padding: 2px 10px;
-	min-height: 28px;
-	border-radius: var(--border-radius-pill);
-	background: var(--color-primary-element-light);
-	color: var(--color-primary-element-light-text);
-	border: none;
-	font-weight: normal;
-}
-
-.plan__person em {
-	font-size: 0.85em;
-	margin-inline-start: 4px;
-	opacity: 0.8;
 }
 </style>

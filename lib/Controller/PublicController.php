@@ -6,6 +6,7 @@ namespace OCA\Helfer\Controller;
 
 use OCA\Helfer\AppInfo\Application;
 use OCA\Helfer\Db\Event;
+use OCA\Helfer\Service\CalendarService;
 use OCA\Helfer\Service\EventService;
 use OCA\Helfer\Service\NotFoundException;
 use OCA\Helfer\Service\SignupService;
@@ -16,7 +17,9 @@ use OCP\AppFramework\Http\Attribute\BruteForceProtection;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
+use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\AppFramework\Http\Response;
 use OCP\AppFramework\Http\Template\PublicTemplateResponse;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
@@ -35,6 +38,7 @@ class PublicController extends Controller {
 		IRequest $request,
 		private EventService $events,
 		private SignupService $signups,
+		private CalendarService $calendar,
 		private IInitialState $initialState,
 		private ITimeFactory $time,
 	) {
@@ -87,6 +91,42 @@ class PublicController extends Controller {
 			return $response;
 		}
 		return new JSONResponse($this->publicData($event));
+	}
+
+	/**
+	 * Calendar file with the given slots, e.g. the shifts somebody signed up for.
+	 *
+	 * @param string $slots comma separated slot ids, empty = all
+	 * @param string $names optional "slotId:Name" pairs separated by "|" to show who helps
+	 */
+	#[PublicPage]
+	#[NoCSRFRequired]
+	#[BruteForceProtection(action: 'helfer_public')]
+	#[FrontpageRoute(verb: 'GET', url: '/s/{token}/kalender.ics')]
+	public function calendar(string $token, string $slots = '', string $names = ''): Response {
+		try {
+			$event = $this->resolve($token);
+		} catch (NotFoundException) {
+			$response = new JSONResponse(['message' => 'Not found'], Http::STATUS_NOT_FOUND);
+			$response->throttle();
+			return $response;
+		}
+		$slotIds = null;
+		if ($slots !== '') {
+			$slotIds = array_values(array_unique(array_map('intval', array_filter(explode(',', $slots), 'is_numeric'))));
+		}
+		$namesBySlot = [];
+		foreach (array_slice(explode('|', $names), 0, 200) as $pair) {
+			$parts = explode(':', $pair, 2);
+			if (count($parts) === 2 && is_numeric($parts[0]) && trim($parts[1]) !== '') {
+				$namesBySlot[(int)$parts[0]][] = mb_substr(trim($parts[1]), 0, 100);
+			}
+		}
+		return new DataDownloadResponse(
+			$this->calendar->build($event, $slotIds, $namesBySlot),
+			$this->calendar->fileName($event),
+			CalendarService::MIME,
+		);
 	}
 
 	#[PublicPage]
@@ -148,6 +188,7 @@ class PublicController extends Controller {
 				'ended' => $event->isEnded($now),
 				'closed' => $event->isClosed($now),
 				'askEmail' => (bool)$event->getAskEmail(),
+				'emailRequired' => (bool)$event->getAskEmail() && (bool)$event->getEmailRequired(),
 				'askPhone' => (bool)$event->getAskPhone(),
 				'askGroup' => (bool)$event->getAskGroup(),
 				'groupOptions' => $event->getGroupOptionList(),

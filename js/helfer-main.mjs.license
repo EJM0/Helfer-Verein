@@ -1,31 +1,16 @@
 SPDX-License-Identifier: AGPL-3.0-or-later
-SPDX-License-Identifier: GPL-3.0-or-later
 SPDX-License-Identifier: MIT
-SPDX-FileCopyrightText: @nextcloud/dialogs developers
 SPDX-FileCopyrightText: Antoni Andre <antoniandre.web@gmail.com>
-SPDX-FileCopyrightText: Evan You
 SPDX-FileCopyrightText: Nextcloud GmbH and Nextcloud contributors
 SPDX-FileCopyrightText: helfer developers
 
 This file is generated from multiple sources. Included packages:
-- @nextcloud/capabilities
-	- version: 1.2.1
-	- license: GPL-3.0-or-later
-- @nextcloud/dialogs
-	- version: 7.6.0
-	- license: AGPL-3.0-or-later
-- @nextcloud/paths
-	- version: 3.1.0
-	- license: GPL-3.0-or-later
 - @nextcloud/vue
 	- version: 9.14.1
 	- license: AGPL-3.0-or-later
 - helfer
-	- version: 1.0.0
+	- version: 1.1.0
 	- license: AGPL-3.0-or-later
 - splitpanes
 	- version: 4.1.2
-	- license: MIT
-- vite
-	- version: 7.3.7
 	- license: MIT

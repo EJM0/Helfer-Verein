@@ -5,9 +5,11 @@ import { t } from '@nextcloud/l10n'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
 import ShiftDialog from './ShiftDialog.vue'
 import StationDialog from './StationDialog.vue'
 import { adminApi, errorMessage } from '../api.ts'
+import { confirmAction } from '../confirm.ts'
 import { formatDay, formatRange, hours, toDate } from '../time.ts'
 import type { FullEvent, Shift, Station } from '../types.ts'
 import { mdiDelete, mdiPencil, mdiPlus } from '../icons.ts'
@@ -20,7 +22,8 @@ const id = computed(() => props.data.event.id)
 
 const shiftDialog = ref<{ shift: Shift | null, start: Date | null, end: Date | null } | null>(null)
 const stationDialog = ref<{ station: Station | null } | null>(null)
-const fillValue = ref(1)
+const fillText = ref('1')
+const fillValue = computed(() => Math.max(0, Math.min(1000, parseInt(String(fillText.value) || '0', 10) || 0)))
 
 function slotFor(shiftId: number, stationId: number) {
 	return props.data.slots.find((s) => s.shiftId === shiftId && s.stationId === stationId)
@@ -85,8 +88,7 @@ async function deleteShift(shift: Shift) {
 	const question = count > 0
 		? t('helfer', 'Schicht löschen? {n} eingetragene Helfer werden dabei entfernt.', { n: count })
 		: t('helfer', 'Schicht löschen?')
-	// eslint-disable-next-line no-alert
-	if (window.confirm(question)) {
+	if (await confirmAction(t('helfer', 'Schicht löschen'), question, t('helfer', 'Löschen'))) {
 		await run(adminApi.deleteShift(id.value, shift.id), t('helfer', 'Schicht konnte nicht gelöscht werden.'))
 	}
 }
@@ -118,8 +120,7 @@ async function deleteStation(station: Station) {
 	const question = count > 0
 		? t('helfer', '„{title}“ löschen? {n} eingetragene Helfer werden dabei entfernt.', { title: station.title, n: count })
 		: t('helfer', '„{title}“ löschen?', { title: station.title })
-	// eslint-disable-next-line no-alert
-	if (window.confirm(question)) {
+	if (await confirmAction(t('helfer', 'Stand löschen'), question, t('helfer', 'Löschen'))) {
 		await run(adminApi.deleteStation(id.value, station.id), t('helfer', 'Stand konnte nicht gelöscht werden.'))
 	}
 }
@@ -229,12 +230,14 @@ async function fillAll() {
 						<tr v-for="station in data.stations" :key="station.id">
 							<th>{{ station.title }}</th>
 							<td v-for="shift in data.shifts" :key="shift.id">
-								<input type="number"
+								<NcTextField class="structure__number"
+									type="number"
 									min="0"
 									max="1000"
-									:value="slotFor(shift.id, station.id)?.needed ?? ''"
-									:aria-label="t('helfer', 'Benötigte Helfer: {station}, {shift}', { station: station.title, shift: formatRange(shift.startTime, shift.endTime, tz) })"
-									@change="setNeeded(shift.id, station.id, ($event.target as HTMLInputElement).value)">
+									label-outside
+									:label="t('helfer', 'Benötigte Helfer: {station}, {shift}', { station: station.title, shift: formatRange(shift.startTime, shift.endTime, tz) })"
+									:model-value="String(slotFor(shift.id, station.id)?.needed ?? '')"
+									@change="setNeeded(shift.id, station.id, ($event.target as HTMLInputElement).value)" />
 								<small v-if="takenFor(shift.id, station.id) > 0" class="structure__taken">
 									{{ t('helfer', '{n} eingetragen', { n: takenFor(shift.id, station.id) }) }}
 								</small>
@@ -244,12 +247,12 @@ async function fillAll() {
 				</table>
 			</div>
 			<div class="structure__fill">
-				<label for="helfer-fill">{{ t('helfer', 'Alle Felder setzen auf') }}</label>
-				<input id="helfer-fill"
-					v-model.number="fillValue"
+				<NcTextField v-model="fillText"
+					class="structure__number structure__number--fill"
 					type="number"
 					min="0"
-					max="1000">
+					max="1000"
+					:label="t('helfer', 'Alle Felder setzen auf')" />
 				<NcButton @click="fillAll">
 					{{ t('helfer', 'Übernehmen') }}
 				</NcButton>
@@ -335,8 +338,14 @@ async function fillAll() {
 	white-space: nowrap;
 }
 
-.structure__matrix input {
-	width: 72px;
+.structure__number {
+	width: 88px;
+	margin: 0 auto;
+}
+
+.structure__number--fill {
+	flex: 0 0 220px;
+	width: 220px;
 	margin: 0;
 }
 
@@ -346,13 +355,9 @@ async function fillAll() {
 
 .structure__fill {
 	display: flex;
-	align-items: center;
+	align-items: flex-end;
 	gap: 8px;
 	margin-top: 12px;
 }
 
-.structure__fill input {
-	width: 72px;
-	margin: 0;
-}
 </style>

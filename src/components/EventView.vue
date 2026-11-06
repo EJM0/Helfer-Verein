@@ -4,10 +4,12 @@ import { showError, showSuccess } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActionLink from '@nextcloud/vue/components/NcActionLink'
 import NcActions from '@nextcloud/vue/components/NcActions'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
 import PlanBoard from './PlanBoard.vue'
 import StructureEditor from './StructureEditor.vue'
 import HelperTable from './HelperTable.vue'
@@ -15,10 +17,11 @@ import SettingsFields from './SettingsFields.vue'
 import { draftFromEvent, draftToPayload } from './draft.ts'
 import { adminApi, errorMessage } from '../api.ts'
 import { pickFolder } from '../folder.ts'
+import { confirmAction } from '../confirm.ts'
 import { formatDateTime } from '../time.ts'
 import type { FullEvent } from '../types.ts'
 import {
-	mdiAccountGroup, mdiCalendarClock, mdiCog, mdiContentCopy, mdiDownload, mdiFolderOutline, mdiLinkVariant,
+	mdiAccountGroup, mdiCalendarClock, mdiCalendarExport, mdiCog, mdiContentCopy, mdiDownload, mdiFolderOutline, mdiLinkVariant,
 	mdiLinkVariantOff, mdiOpenInNew, mdiRefresh, mdiTableArrowRight, mdiStorefrontOutline,
 } from '../icons.ts'
 
@@ -91,14 +94,13 @@ async function copyLink() {
 		await navigator.clipboard.writeText(props.data.publicUrl)
 		showSuccess(t('helfer', 'Link kopiert'))
 	} catch {
-		window.prompt(t('helfer', 'Link kopieren'), props.data.publicUrl)
+		showError(t('helfer', 'Link konnte nicht kopiert werden. Bitte manuell markieren und kopieren.'))
 	}
 }
 
 async function regenerate() {
 	if (props.data.publicUrl
-		// eslint-disable-next-line no-alert
-		&& !window.confirm(t('helfer', 'Einen neuen Link erzeugen? Der bisherige Link funktioniert dann nicht mehr.'))) {
+		&& !await confirmAction(t('helfer', 'Neuen Link erzeugen'), t('helfer', 'Einen neuen Link erzeugen? Der bisherige Link funktioniert dann nicht mehr.'))) {
 		return
 	}
 	try {
@@ -109,8 +111,7 @@ async function regenerate() {
 }
 
 async function removeLink() {
-	// eslint-disable-next-line no-alert
-	if (!window.confirm(t('helfer', 'Öffentlichen Link löschen? Helfer können die Umfrage dann nicht mehr öffnen.'))) {
+	if (!await confirmAction(t('helfer', 'Link löschen'), t('helfer', 'Öffentlichen Link löschen? Helfer können die Umfrage dann nicht mehr öffnen.'), t('helfer', 'Löschen'))) {
 		return
 	}
 	try {
@@ -195,6 +196,12 @@ function openExportedFile() {
 						</template>
 						{{ t('helfer', 'Excel-Datei herunterladen') }}
 					</NcActionButton>
+					<NcActionLink :href="adminApi.calendarUrl(event.id)" download>
+						<template #icon>
+							<NcIconSvgWrapper :path="mdiCalendarExport" />
+						</template>
+						{{ t('helfer', 'Alle Schichten als Kalender (.ics)') }}
+					</NcActionLink>
 				</NcActions>
 			</div>
 		</header>
@@ -208,12 +215,11 @@ function openExportedFile() {
 		<section class="event-view__link">
 			<template v-if="data.publicUrl">
 				<NcIconSvgWrapper :path="mdiLinkVariant" />
-				<input class="event-view__url"
-					type="text"
+				<NcTextField class="event-view__url"
+					:model-value="data.publicUrl"
+					:label="t('helfer', 'Öffentlicher Link für Helfer')"
 					readonly
-					:value="data.publicUrl"
-					:aria-label="t('helfer', 'Öffentlicher Link')"
-					@focus="($event.target as HTMLInputElement).select()">
+					@focus="($event.target as HTMLInputElement).select()" />
 				<NcButton variant="primary" @click="copyLink">
 					<template #icon>
 						<NcIconSvgWrapper :path="mdiContentCopy" />
@@ -367,7 +373,6 @@ function openExportedFile() {
 .event-view__url {
 	flex: 1 1 260px;
 	min-width: 0;
-	margin: 0;
 }
 
 .event-view__tabs {

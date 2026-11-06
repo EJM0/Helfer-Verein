@@ -14,12 +14,20 @@ ganz ohne Nextcloud-Konto.
 - Helfer selbst eintragen, verschieben, austragen und **Rollen** vergeben (z. B. Schichtleitung, Kasse)
 - Abfrage von E-Mail, Telefon, Gruppe/Abteilung/Verein und **eigenen Fragen** (z. B. T-Shirt-Größe)
 - **Helferliste** nach Einsätzen oder Personen inkl. Stundensumme
+- Alle Schichten als Kalenderdatei (`.ics`) herunterladen
+- Oberfläche komplett mit den Nextcloud-Komponenten ([@nextcloud/vue](https://github.com/nextcloud-libraries/nextcloud-vue)),
+  passt sich Design, Dark Mode und Barrierefreiheit von Nextcloud an
 
 **Öffentlicher Link (normale Helferansicht)**
 
 - Läuft auf Handy und PC, kein Konto nötig
-- Mehrere Schichten auswählen und mit einem Formular eintragen
-- Eigene Eintragungen werden im Browser gemerkt und können wieder ausgetragen werden
+- Namen werden **direkt in die Schicht eingetragen**: bei jedem freien Platz auf „Eintragen“ klicken und Namen eingeben
+- Von einem Gerät aus können **auch andere Personen mit eingetragen** werden (z. B. Familie, Freunde);
+  bereits eingegebene Personen lassen sich per „Schnell eintragen“ für weitere Schichten übernehmen
+- **E-Mail-Adresse ist freiwillig** – kann pro Umfrage als Pflichtfeld eingestellt werden
+- Alles, was von diesem Gerät eingetragen wurde, kann bis zum Enddatum wieder ausgetragen werden
+- **Kalender-Import**: jede Schicht einzeln oder alle eigenen Schichten auf einmal als `.ics`-Datei
+  (funktioniert mit Nextcloud Kalender, Google, Apple, Outlook, Thunderbird), inkl. Erinnerung 1 Stunde vorher
 - Namen der Helfer optional sichtbar
 
 **Termine**

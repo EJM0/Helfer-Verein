@@ -40,6 +40,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setExportPath(?string $exportPath)
  * @method int getAskEmail()
  * @method void setAskEmail(int $askEmail)
+ * @method int getEmailRequired()
+ * @method void setEmailRequired(int $emailRequired)
  * @method int getAskPhone()
  * @method void setAskPhone(int $askPhone)
  * @method int getAskGroup()
@@ -74,6 +76,7 @@ class Event extends Entity implements JsonSerializable {
 	protected $exportedAt;
 	protected $exportPath;
 	protected $askEmail = 1;
+	protected $emailRequired = 0;
 	protected $askPhone = 0;
 	protected $askGroup = 0;
 	protected $groupOptions;
@@ -88,6 +91,7 @@ class Event extends Entity implements JsonSerializable {
 		$this->addType('closedAt', 'integer');
 		$this->addType('exportedAt', 'integer');
 		$this->addType('askEmail', 'integer');
+		$this->addType('emailRequired', 'integer');
 		$this->addType('askPhone', 'integer');
 		$this->addType('askGroup', 'integer');
 		$this->addType('publicNames', 'integer');
@@ -164,6 +168,7 @@ class Event extends Entity implements JsonSerializable {
 			'exportedAt' => $this->exportedAt,
 			'exportPath' => $this->exportPath,
 			'askEmail' => (bool)$this->askEmail,
+			'emailRequired' => (bool)$this->askEmail && (bool)$this->emailRequired,
 			'askPhone' => (bool)$this->askPhone,
 			'askGroup' => (bool)$this->askGroup,
 			'groupOptions' => $this->getGroupOptionList(),

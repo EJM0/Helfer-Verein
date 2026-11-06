@@ -23,4 +23,7 @@ export {
 	mdiOpenInNew,
 	mdiClockOutline,
 	mdiStorefrontOutline,
+	mdiCalendarPlus,
+	mdiCalendarExport,
+	mdiClose,
 } from '@mdi/js'

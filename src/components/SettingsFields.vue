@@ -20,6 +20,7 @@ export interface SettingsDraft {
 	closeAction: 'close' | 'delete'
 	exportFolder: string
 	askEmail: boolean
+	emailRequired: boolean
 	askPhone: boolean
 	askGroup: boolean
 	groupOptions: string
@@ -124,7 +125,13 @@ function removeQuestion(index: number) {
 		<template v-if="props.full">
 			<h3>{{ t('helfer', 'Angaben der Helfer') }}</h3>
 			<NcCheckboxRadioSwitch v-model="draft.askEmail" type="switch">
-				{{ t('helfer', 'E-Mail-Adresse abfragen (Pflicht)') }}
+				{{ t('helfer', 'E-Mail-Adresse abfragen') }}
+			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch v-if="draft.askEmail"
+				v-model="draft.emailRequired"
+				type="switch"
+				class="settings-fields__indent">
+				{{ t('helfer', 'E-Mail-Adresse ist Pflicht (sonst freiwillig)') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch v-model="draft.askPhone" type="switch">
 				{{ t('helfer', 'Telefonnummer abfragen (optional)') }}
@@ -211,6 +218,10 @@ function removeQuestion(index: number) {
 	display: flex;
 	gap: 8px;
 	align-items: center;
+}
+
+.settings-fields__indent {
+	margin-inline-start: 24px;
 }
 
 .settings-fields__radios {

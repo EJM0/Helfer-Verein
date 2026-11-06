@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { t } from '@nextcloud/l10n'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { slotOptions } from './slots.ts'
 import type { FullEvent, Signup } from '../types.ts'
@@ -24,6 +25,24 @@ const form = ref({
 	answers: { ...(props.signup?.answers ?? {}) } as Record<string, string>,
 })
 
+const selectOptions = computed(() => options.value.map((o) => ({ id: o.slot.id, label: o.label })))
+const slotOption = computed({
+	get: () => selectOptions.value.find((o) => o.id === form.value.slotId) ?? null,
+	set: (value: { id: number, label: string } | null) => {
+		if (value) {
+			form.value.slotId = value.id
+		}
+	},
+})
+const groupOption = computed({
+	get: () => form.value.groupName || null,
+	set: (value: string | null) => { form.value.groupName = value ?? '' },
+})
+const roleOption = computed({
+	get: () => form.value.role || null,
+	set: (value: string | null) => { form.value.role = value ?? '' },
+})
+
 const roleSuggestions = computed(() => {
 	const roles = new Set<string>([t('helfer', 'Schichtleitung'), t('helfer', 'Kasse')])
 	for (const s of props.data.signups) {
@@ -42,33 +61,25 @@ const roleSuggestions = computed(() => {
 		@submit.prevent="emit('save', form)"
 		@update:open="(open: boolean) => !open && emit('close')">
 		<div class="signup-dialog">
-			<label class="signup-dialog__label" for="helfer-slot">{{ t('helfer', 'Schicht und Stand') }}</label>
-			<select id="helfer-slot" v-model.number="form.slotId">
-				<option v-for="option in options" :key="option.slot.id" :value="option.slot.id">
-					{{ option.label }}
-				</option>
-			</select>
+			<NcSelect v-model="slotOption"
+				:options="selectOptions"
+				:input-label="t('helfer', 'Schicht und Stand')"
+				:clearable="false" />
 			<NcTextField v-model="form.name" :label="t('helfer', 'Name')" required />
 			<NcTextField v-model="form.email" type="email" :label="t('helfer', 'E-Mail')" />
 			<NcTextField v-model="form.phone" type="tel" :label="t('helfer', 'Telefon')" />
-			<template v-if="event.askGroup || form.groupName">
-				<label class="signup-dialog__label" for="helfer-group">{{ t('helfer', 'Gruppe / Verein') }}</label>
-				<input id="helfer-group"
-					v-model="form.groupName"
-					list="helfer-group-options"
-					type="text">
-				<datalist id="helfer-group-options">
-					<option v-for="option in event.groupOptions" :key="option" :value="option" />
-				</datalist>
-			</template>
-			<label class="signup-dialog__label" for="helfer-role">{{ t('helfer', 'Rolle (z. B. Schichtleitung, Kasse)') }}</label>
-			<input id="helfer-role"
-				v-model="form.role"
-				list="helfer-role-options"
-				type="text">
-			<datalist id="helfer-role-options">
-				<option v-for="role in roleSuggestions" :key="role" :value="role" />
-			</datalist>
+			<NcSelect v-if="event.askGroup || form.groupName"
+				v-model="groupOption"
+				:options="event.groupOptions"
+				:input-label="t('helfer', 'Gruppe / Verein')"
+				taggable
+				push-tags />
+			<NcSelect v-model="roleOption"
+				:options="roleSuggestions"
+				:input-label="t('helfer', 'Rolle (z. B. Schichtleitung, Kasse)')"
+				:placeholder="t('helfer', 'Auswählen oder eingeben')"
+				taggable
+				push-tags />
 			<NcTextField v-for="question in event.questions"
 				:key="question.id"
 				v-model="form.answers[question.id]"
@@ -96,13 +107,4 @@ const roleSuggestions = computed(() => {
 	gap: 8px;
 }
 
-.signup-dialog select, .signup-dialog input[type='text'] {
-	width: 100%;
-	margin: 0;
-}
-
-.signup-dialog__label {
-	margin-top: 4px;
-	color: var(--color-text-maxcontrast);
-}
 </style>

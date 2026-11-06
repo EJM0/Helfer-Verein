@@ -68,6 +68,9 @@ export const adminApi = {
 	async exportToFolder(id: number, folder?: string): Promise<FullEvent & { path: string }> {
 		return (await axios.post(base(`/api/events/${id}/export`), folder ? { folder } : {})).data
 	},
+	calendarUrl(id: number): string {
+		return base(`/api/events/${id}/calendar.ics`)
+	},
 	downloadUrl(id: number): string {
 		return base(`/api/events/${id}/export.xlsx`)
 	},

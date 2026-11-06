@@ -16,6 +16,7 @@ import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import EventView from './components/EventView.vue'
 import CreateDialog from './components/CreateDialog.vue'
 import { adminApi, errorMessage } from './api.ts'
+import { confirmAction } from './confirm.ts'
 import type { FullEvent, HelferEvent } from './types.ts'
 import { mdiAccountGroup, mdiClipboardTextOutline, mdiDelete, mdiLockOutline, mdiPlus, mdiContentCopy } from './icons.ts'
 
@@ -93,8 +94,7 @@ async function duplicate(id: number) {
 }
 
 async function remove(event: HelferEvent) {
-	// eslint-disable-next-line no-alert
-	if (!window.confirm(t('helfer', 'Umfrage „{title}“ mit allen Helfern endgültig löschen?', { title: event.title }))) {
+	if (!await confirmAction(t('helfer', 'Umfrage löschen'), t('helfer', 'Umfrage „{title}“ mit allen Helfern endgültig löschen?', { title: event.title }), t('helfer', 'Löschen'))) {
 		return
 	}
 	try {

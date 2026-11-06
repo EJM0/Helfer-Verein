@@ -1,50 +1,58 @@
+/** Things this browser remembers for the public page. Wrapped in try/catch: storage can be unavailable. */
+
 export interface OwnSignup {
 	id: number
 	editToken: string
+	slotId?: number
+	name?: string
 }
 
-const key = (token: string) => `helfer-own-${token}`
-
-export function loadOwn(token: string): OwnSignup[] {
-	try {
-		const raw = window.localStorage.getItem(key(token))
-		const parsed = raw ? JSON.parse(raw) : []
-		return Array.isArray(parsed) ? parsed.filter((e) => typeof e?.id === 'number' && typeof e?.editToken === 'string') : []
-	} catch {
-		return []
-	}
-}
-
-export function saveOwn(token: string, entries: OwnSignup[]): void {
-	try {
-		window.localStorage.setItem(key(token), JSON.stringify(entries))
-	} catch {
-		// Private mode etc. – cancelling is then only possible via the organisers.
-	}
-}
-
-const profileKey = 'helfer-profile'
-
-export interface Profile {
+export interface Person {
 	name: string
 	email: string
 	phone: string
 	groupName: string
 }
 
-export function loadProfile(): Profile | null {
+const ownKey = (token: string) => `helfer-own-${token}`
+const peopleKey = 'helfer-people'
+
+function read<T>(key: string): T[] {
 	try {
-		const raw = window.localStorage.getItem(profileKey)
-		return raw ? { name: '', email: '', phone: '', groupName: '', ...JSON.parse(raw) } : null
+		const raw = window.localStorage.getItem(key)
+		const parsed = raw ? JSON.parse(raw) : []
+		return Array.isArray(parsed) ? parsed : []
 	} catch {
-		return null
+		return []
 	}
 }
 
-export function saveProfile(profile: Profile): void {
+function write(key: string, value: unknown): void {
 	try {
-		window.localStorage.setItem(profileKey, JSON.stringify(profile))
+		window.localStorage.setItem(key, JSON.stringify(value))
 	} catch {
-		// ignore
+		// Private mode etc. – cancelling is then only possible via the organisers.
 	}
+}
+
+export function loadOwn(token: string): OwnSignup[] {
+	return read<OwnSignup>(ownKey(token)).filter((e) => typeof e?.id === 'number' && typeof e?.editToken === 'string')
+}
+
+export function saveOwn(token: string, entries: OwnSignup[]): void {
+	write(ownKey(token), entries)
+}
+
+/** People entered on this device, most recent first – for quickly signing them up for more shifts. */
+export function loadPeople(): Person[] {
+	return read<Person>(peopleKey)
+		.filter((p) => typeof p?.name === 'string' && p.name !== '')
+		.map((p) => ({ name: p.name, email: p.email ?? '', phone: p.phone ?? '', groupName: p.groupName ?? '' }))
+}
+
+export function rememberPerson(person: Person): Person[] {
+	const others = loadPeople().filter((p) => p.name.toLowerCase() !== person.name.toLowerCase())
+	const people = [person, ...others].slice(0, 12)
+	write(peopleKey, people)
+	return people
 }

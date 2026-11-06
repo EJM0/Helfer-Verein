@@ -205,7 +205,7 @@ class SignupService {
 		$phone = $this->clean($data['phone'] ?? null, 64);
 		$group = $this->clean($data['groupName'] ?? null, 255);
 		if (!$isAdmin) {
-			if ($event->getAskEmail() && $email === null) {
+			if ($event->getAskEmail() && $event->getEmailRequired() && $email === null) {
 				throw new ValidationException($this->l->t('Bitte eine E-Mail-Adresse angeben.'));
 			}
 			if ($event->getAskGroup()) {

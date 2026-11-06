@@ -161,7 +161,7 @@ class EventService {
 			$copy = new Event();
 			// Dates are not copied: they belong to the old event and would close the copy right away.
 			foreach (['title', 'description', 'location', 'contact', 'timezone', 'closeAction',
-				'exportFolder', 'askEmail', 'askPhone', 'askGroup', 'groupOptions', 'questions', 'publicNames'] as $field) {
+				'exportFolder', 'askEmail', 'emailRequired', 'askPhone', 'askGroup', 'groupOptions', 'questions', 'publicNames'] as $field) {
 				$copy->{'set' . ucfirst($field)}($source->{'get' . ucfirst($field)}());
 			}
 			$copy->setTitle($this->l->t('%s (Kopie)', [$source->getTitle()]));
@@ -470,7 +470,7 @@ class EventService {
 			}
 			$event->setExportFolder($folder);
 		}
-		foreach (['askEmail', 'askPhone', 'askGroup', 'publicNames'] as $flag) {
+		foreach (['askEmail', 'emailRequired', 'askPhone', 'askGroup', 'publicNames'] as $flag) {
 			if (array_key_exists($flag, $data)) {
 				$event->{'set' . ucfirst($flag)}(empty($data[$flag]) ? 0 : 1);
 			}

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Helfer\Controller;
 
 use OCA\Helfer\AppInfo\Application;
+use OCA\Helfer\Service\CalendarService;
 use OCA\Helfer\Service\EventService;
 use OCA\Helfer\Service\ExportService;
 use OCA\Helfer\Service\SignupService;
@@ -33,6 +34,7 @@ class EventController extends Controller {
 		private EventService $events,
 		private SignupService $signups,
 		private ExportService $export,
+		private CalendarService $calendar,
 		private IUserSession $userSession,
 		private IURLGenerator $urlGenerator,
 	) {
@@ -255,5 +257,17 @@ class EventController extends Controller {
 			return new JSONResponse(['message' => 'Not found'], Http::STATUS_NOT_FOUND);
 		}
 		return new DataDownloadResponse($this->export->build($event), $this->export->fileName($event), ExportService::MIME);
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[FrontpageRoute(verb: 'GET', url: '/api/events/{id}/calendar.ics', requirements: ['id' => '\d+'])]
+	public function calendar(int $id): Response {
+		try {
+			$event = $this->events->getForUser($id, $this->uid());
+		} catch (\OCA\Helfer\Service\NotFoundException) {
+			return new JSONResponse(['message' => 'Not found'], Http::STATUS_NOT_FOUND);
+		}
+		return new DataDownloadResponse($this->calendar->build($event), $this->calendar->fileName($event), CalendarService::MIME);
 	}
 }

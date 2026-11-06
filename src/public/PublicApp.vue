@@ -3,40 +3,40 @@ import { computed, onMounted, ref } from 'vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
+import { generateUrl } from '@nextcloud/router'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActionLink from '@nextcloud/vue/components/NcActionLink'
+import NcActions from '@nextcloud/vue/components/NcActions'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
+import NcChip from '@nextcloud/vue/components/NcChip'
+import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-import NcTextField from '@nextcloud/vue/components/NcTextField'
+import SlotSignupForm from './SlotSignupForm.vue'
 import { errorMessage, publicApi } from '../api.ts'
+import { confirmAction } from '../confirm.ts'
 import { dayKey, formatDateTime, formatDay, formatRange } from '../time.ts'
-import type { PublicData, Shift } from '../types.ts'
-import { loadOwn, loadProfile, saveOwn, saveProfile, type OwnSignup } from './storage.ts'
-import { mdiAccount, mdiCheck, mdiClockOutline, mdiEmailOutline, mdiMapMarker } from '../icons.ts'
+import type { PublicData, Shift, Signup } from '../types.ts'
+import { loadOwn, loadPeople, rememberPerson, saveOwn, type OwnSignup, type Person } from './storage.ts'
+import {
+	mdiAccount, mdiAccountPlus, mdiCalendarExport, mdiCalendarPlus, mdiClipboardTextOutline, mdiClockOutline,
+	mdiClose, mdiMapMarker,
+} from '../icons.ts'
 
 const token = loadState<string>('helfer', 'token', '')
 const data = ref<PublicData | null>(null)
 const loading = ref(true)
 const notFound = ref(false)
 const submitting = ref(false)
-const selected = ref<number[]>([])
+const openSlot = ref<number | null>(null)
 const own = ref<OwnSignup[]>(loadOwn(token))
-const formEl = ref<HTMLElement | null>(null)
-
-const profile = loadProfile()
-const form = ref({
-	name: profile?.name ?? '',
-	email: profile?.email ?? '',
-	phone: profile?.phone ?? '',
-	groupName: profile?.groupName ?? '',
-	comment: '',
-	answers: {} as Record<string, string>,
-})
+const people = ref<Person[]>(loadPeople())
 
 const event = computed(() => data.value?.event)
 const tz = computed(() => event.value?.timezone)
 const writable = computed(() => !!event.value && !event.value.ended && !event.value.closed)
+const ownById = computed(() => new Map(own.value.map((o) => [o.id, o])))
 
 const days = computed(() => {
 	const groups: { key: string, label: string, shifts: Shift[] }[] = []
@@ -52,13 +52,19 @@ const days = computed(() => {
 	return groups
 })
 
-const ownIds = computed(() => new Set(own.value.map((o) => o.id)))
+/**
+ * Name to show for a signup: own entries are known locally even when names are hidden.
+ * @param signup
+ */
+function nameOf(signup: Signup): string | null {
+	return signup.name ?? ownById.value.get(signup.id)?.name ?? null
+}
 
 function rows(shift: Shift) {
-	if (!data.value) {
+	const d = data.value
+	if (!d) {
 		return []
 	}
-	const d = data.value
 	return d.stations
 		.map((station) => {
 			const slot = d.slots.find((s) => s.shiftId === shift.id && s.stationId === station.id)
@@ -66,31 +72,47 @@ function rows(shift: Shift) {
 				return null
 			}
 			const signups = d.signups.filter((s) => s.slotId === slot.id)
-			return { station, slot, signups, free: Math.max(0, slot.needed - signups.length), mine: signups.some((s) => ownIds.value.has(s.id)) }
+			const visible = signups.filter((s) => event.value?.publicNames || ownById.value.has(s.id))
+			return {
+				station,
+				slot,
+				signups,
+				visible,
+				hidden: signups.length - visible.length,
+				free: Math.max(0, slot.needed - signups.length),
+			}
 		})
 		.filter((row): row is NonNullable<typeof row> => row !== null)
 }
 
-const mySignups = computed(() => {
-	if (!data.value) {
+const mine = computed(() => {
+	const d = data.value
+	if (!d) {
 		return []
 	}
-	const d = data.value
 	return d.signups
-		.filter((s) => ownIds.value.has(s.id))
+		.filter((s) => ownById.value.has(s.id))
 		.map((signup) => {
 			const slot = d.slots.find((s) => s.id === signup.slotId)
-			const shift = d.shifts.find((s) => s.id === slot?.shiftId)
-			const station = d.stations.find((s) => s.id === slot?.stationId)
-			return { signup, shift, station }
+			return {
+				signup,
+				name: nameOf(signup) ?? '',
+				shift: d.shifts.find((s) => s.id === slot?.shiftId),
+				station: d.stations.find((s) => s.id === slot?.stationId),
+			}
 		})
 		.filter((e) => e.shift && e.station)
-		.sort((a, b) => a.shift!.startTime - b.shift!.startTime)
+		.sort((a, b) => a.shift!.startTime - b.shift!.startTime || a.name.localeCompare(b.name))
 })
 
-function toggle(slotId: number, value: boolean) {
-	selected.value = value ? [...selected.value, slotId] : selected.value.filter((id) => id !== slotId)
+function calendarUrl(entries: { slotId: number, name?: string | null }[]): string {
+	const slots = [...new Set(entries.map((e) => e.slotId))].join(',')
+	const names = entries.filter((e) => e.name).map((e) => `${e.slotId}:${e.name}`).join('|')
+	return generateUrl('/apps/helfer/s/{token}/kalender.ics', { token }) + `?slots=${encodeURIComponent(slots)}`
+		+ (names ? `&names=${encodeURIComponent(names)}` : '')
 }
+
+const allMineCalendarUrl = computed(() => calendarUrl(mine.value.map((e) => ({ slotId: e.signup.slotId, name: e.name }))))
 
 function apply(result: PublicData) {
 	data.value = result
@@ -98,10 +120,6 @@ function apply(result: PublicData) {
 	const existing = new Set(result.signups.map((s) => s.id))
 	own.value = own.value.filter((o) => existing.has(o.id))
 	saveOwn(token, own.value)
-	selected.value = selected.value.filter((id) => {
-		const slot = result.slots.find((s) => s.id === id)
-		return slot && result.signups.filter((s) => s.slotId === id).length < slot.needed
-	})
 }
 
 async function load() {
@@ -114,48 +132,47 @@ async function load() {
 	}
 }
 
-function scrollToForm() {
-	formEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-async function submit() {
-	if (selected.value.length === 0) {
-		showError(t('helfer', 'Bitte mindestens eine Schicht auswählen.'))
-		return
-	}
+async function submit(slotId: number, payload: Record<string, unknown>) {
 	submitting.value = true
 	try {
-		const result = await publicApi.signup(token, { slotIds: selected.value, ...form.value })
+		const result = await publicApi.signup(token, { ...payload, slotIds: [slotId] })
+		const name = String(payload.name ?? '').trim()
 		if (result.editToken && result.created) {
-			own.value = [...own.value, ...result.created.map((id) => ({ id, editToken: result.editToken! }))]
+			own.value = [...own.value, ...result.created.map((id) => ({ id, editToken: result.editToken!, slotId, name }))]
 		}
-		saveProfile({ name: form.value.name, email: form.value.email, phone: form.value.phone, groupName: form.value.groupName })
-		selected.value = []
-		form.value.comment = ''
+		people.value = rememberPerson({
+			name,
+			email: String(payload.email ?? ''),
+			phone: String(payload.phone ?? ''),
+			groupName: String(payload.groupName ?? ''),
+		})
+		openSlot.value = null
 		apply(result)
-		showSuccess(t('helfer', 'Danke! Du bist eingetragen.'))
-		document.getElementById('helfer-public')?.scrollTo({ top: 0, behavior: 'smooth' })
+		showSuccess(t('helfer', '{name} ist eingetragen. Danke!', { name }))
 	} catch (e) {
 		showError(errorMessage(e, t('helfer', 'Eintragen fehlgeschlagen.')))
 		if ((e as { response?: { status?: number } })?.response?.status === 400) {
-			await load()
+			apply(await publicApi.get(token))
 		}
 	} finally {
 		submitting.value = false
 	}
 }
 
-async function cancel(signupId: number) {
-	const entry = own.value.find((o) => o.id === signupId)
-	// eslint-disable-next-line no-alert
-	if (!entry || !window.confirm(t('helfer', 'Wirklich austragen?'))) {
+async function cancel(signup: Signup) {
+	const entry = ownById.value.get(signup.id)
+	if (!entry) {
+		return
+	}
+	const name = nameOf(signup) ?? ''
+	if (!await confirmAction(t('helfer', 'Austragen'), t('helfer', '{name} wirklich aus dieser Schicht austragen?', { name }), t('helfer', 'Austragen'))) {
 		return
 	}
 	try {
-		const result = await publicApi.cancel(token, signupId, entry.editToken)
-		own.value = own.value.filter((o) => o.id !== signupId)
+		const result = await publicApi.cancel(token, signup.id, entry.editToken)
+		own.value = own.value.filter((o) => o.id !== signup.id)
 		apply(result)
-		showSuccess(t('helfer', 'Du wurdest ausgetragen.'))
+		showSuccess(t('helfer', '{name} wurde ausgetragen.', { name }))
 	} catch (e) {
 		showError(errorMessage(e, t('helfer', 'Austragen fehlgeschlagen.')))
 	}
@@ -171,8 +188,12 @@ onMounted(load)
 		</div>
 
 		<div v-else-if="notFound || !data || !event" class="helfer-public__card">
-			<h2>{{ t('helfer', 'Umfrage nicht gefunden') }}</h2>
-			<p>{{ t('helfer', 'Dieser Link ist ungültig oder die Umfrage wurde geschlossen.') }}</p>
+			<NcEmptyContent :name="t('helfer', 'Umfrage nicht gefunden')"
+				:description="t('helfer', 'Dieser Link ist ungültig oder die Umfrage wurde geschlossen.')">
+				<template #icon>
+					<NcIconSvgWrapper :path="mdiClipboardTextOutline" />
+				</template>
+			</NcEmptyContent>
 		</div>
 
 		<template v-else>
@@ -193,26 +214,44 @@ onMounted(load)
 						{{ t('helfer', 'Eintragen und Austragen möglich bis {date}', { date: formatDateTime(event.endDate, tz) }) }}
 					</li>
 				</ul>
+				<p v-if="writable" class="helfer-public__hint">
+					{{ t('helfer', 'Klicke in einer Schicht auf „Eintragen“ und gib deinen Namen ein. Du kannst auch andere Personen mit eintragen.') }}
+				</p>
 			</header>
 
 			<NcNoteCard v-if="event.closed" type="error" :text="t('helfer', 'Diese Umfrage ist geschlossen.')" />
 			<NcNoteCard v-else-if="event.ended" type="warning" :text="t('helfer', 'Die Veranstaltung ist beendet. Eintragungen und Änderungen sind nicht mehr möglich. Bei Fragen wende dich bitte an die Organisatoren.')" />
 
-			<section v-if="mySignups.length > 0" class="helfer-public__card helfer-public__mine">
-				<h3>{{ t('helfer', 'Deine Eintragungen') }}</h3>
+			<section v-if="mine.length > 0" class="helfer-public__card helfer-public__mine">
+				<div class="helfer-public__mine-head">
+					<h3>{{ t('helfer', 'Von diesem Gerät eingetragen') }}</h3>
+					<NcButton :href="allMineCalendarUrl" download variant="secondary">
+						<template #icon>
+							<NcIconSvgWrapper :path="mdiCalendarExport" />
+						</template>
+						{{ t('helfer', 'Alle in den Kalender') }}
+					</NcButton>
+				</div>
 				<ul>
-					<li v-for="{ signup, shift, station } in mySignups" :key="signup.id">
-						<NcIconSvgWrapper :path="mdiCheck" :size="18" />
-						<span class="helfer-public__mine-text">
-							<strong>{{ station!.title }}</strong> –
-							{{ formatDay(shift!.startTime, tz) }}, {{ formatRange(shift!.startTime, shift!.endTime, tz) }}
-						</span>
-						<NcButton v-if="writable"
-							variant="tertiary"
-							size="small"
-							@click="cancel(signup.id)">
-							{{ t('helfer', 'Austragen') }}
-						</NcButton>
+					<li v-for="entry in mine" :key="entry.signup.id">
+						<div class="helfer-public__mine-text">
+							<strong>{{ entry.name }}</strong>
+							<span>{{ entry.station!.title }} · {{ formatDay(entry.shift!.startTime, tz) }}, {{ formatRange(entry.shift!.startTime, entry.shift!.endTime, tz) }}</span>
+						</div>
+						<NcActions :force-name="false">
+							<NcActionLink :href="calendarUrl([{ slotId: entry.signup.slotId, name: entry.name }])" download>
+								<template #icon>
+									<NcIconSvgWrapper :path="mdiCalendarPlus" />
+								</template>
+								{{ t('helfer', 'In den Kalender') }}
+							</NcActionLink>
+							<NcActionButton v-if="writable" close-after-click @click="cancel(entry.signup)">
+								<template #icon>
+									<NcIconSvgWrapper :path="mdiClose" />
+								</template>
+								{{ t('helfer', 'Austragen') }}
+							</NcActionButton>
+						</NcActions>
 					</li>
 				</ul>
 			</section>
@@ -227,34 +266,63 @@ onMounted(load)
 						<strong>{{ formatRange(shift.startTime, shift.endTime, tz) }}</strong>
 						<span v-if="shift.title">{{ shift.title }}</span>
 					</header>
-					<div v-for="row in rows(shift)"
-						:key="row.slot.id"
-						class="helfer-public__row"
-						:class="{ 'helfer-public__row--full': row.free === 0 }">
-						<div class="helfer-public__select">
-							<NcCheckboxRadioSwitch v-if="writable && row.free > 0 && !row.mine"
-								:model-value="selected.includes(row.slot.id)"
-								@update:model-value="(v: boolean) => toggle(row.slot.id, v)">
-								<strong>{{ row.station.title }}</strong>
-							</NcCheckboxRadioSwitch>
-							<strong v-else class="helfer-public__station">{{ row.station.title }}</strong>
+					<div v-for="row in rows(shift)" :key="row.slot.id" class="helfer-public__row">
+						<div class="helfer-public__station">
+							<strong>{{ row.station.title }}</strong>
 							<span class="helfer-public__free">
-								<template v-if="row.mine">{{ t('helfer', 'Du bist dabei') }}</template>
-								<template v-else-if="row.free === 0">{{ t('helfer', 'voll') }}</template>
+								<template v-if="row.free === 0">{{ t('helfer', 'voll') }}</template>
 								<template v-else>{{ row.free === 1 ? t('helfer', 'noch 1 Platz frei') : t('helfer', 'noch {n} Plätze frei', { n: row.free }) }}</template>
 							</span>
 						</div>
 						<p v-if="row.station.description" class="helfer-public__hint">
 							{{ row.station.description }}
 						</p>
-						<ul v-if="event.publicNames && row.signups.length > 0" class="helfer-public__names">
-							<li v-for="signup in row.signups" :key="signup.id" :class="{ 'helfer-public__names--mine': ownIds.has(signup.id) }">
-								{{ signup.name }}<em v-if="signup.role"> · {{ signup.role }}</em>
-							</li>
-						</ul>
-						<p v-else-if="row.signups.length > 0" class="helfer-public__hint">
-							{{ t('helfer', '{n} von {needed} belegt', { n: row.signups.length, needed: row.slot.needed }) }}
-						</p>
+						<div class="helfer-public__names">
+							<template v-for="signup in row.visible" :key="signup.id">
+								<NcChip v-if="ownById.has(signup.id)"
+									:text="nameOf(signup) ?? ''"
+									variant="primary"
+									no-close>
+									<template #actions>
+										<NcActionLink :href="calendarUrl([{ slotId: row.slot.id, name: nameOf(signup) }])" download>
+											<template #icon>
+												<NcIconSvgWrapper :path="mdiCalendarPlus" />
+											</template>
+											{{ t('helfer', 'In den Kalender') }}
+										</NcActionLink>
+										<NcActionButton v-if="writable" close-after-click @click="cancel(signup)">
+											<template #icon>
+												<NcIconSvgWrapper :path="mdiClose" />
+											</template>
+											{{ t('helfer', 'Austragen') }}
+										</NcActionButton>
+									</template>
+								</NcChip>
+								<NcChip v-else
+									:text="(nameOf(signup) ?? '') + (signup.role ? ' · ' + signup.role : '')"
+									variant="tertiary"
+									no-close />
+							</template>
+							<span v-if="row.hidden > 0" class="helfer-public__hint">
+								{{ row.hidden === 1 ? t('helfer', '1 weitere Person') : t('helfer', '{n} weitere Personen', { n: row.hidden }) }}
+							</span>
+							<NcButton v-if="writable && row.free > 0 && openSlot !== row.slot.id"
+								size="small"
+								variant="tertiary"
+								@click="openSlot = row.slot.id">
+								<template #icon>
+									<NcIconSvgWrapper :path="mdiAccountPlus" :size="18" />
+								</template>
+								{{ t('helfer', 'Eintragen') }}
+							</NcButton>
+						</div>
+						<SlotSignupForm v-if="writable && openSlot === row.slot.id"
+							:event="event"
+							:people="people"
+							:taken-names="row.signups.map((s) => nameOf(s) ?? '').filter(Boolean)"
+							:submitting="submitting"
+							@submit="(payload) => submit(row.slot.id, payload)"
+							@cancel="openSlot = null" />
 					</div>
 				</article>
 			</section>
@@ -262,68 +330,6 @@ onMounted(load)
 			<p v-if="days.length === 0" class="helfer-public__card">
 				{{ t('helfer', 'Es wurden noch keine Schichten eingetragen.') }}
 			</p>
-
-			<form v-if="writable && data.slots.length > 0"
-				ref="formEl"
-				class="helfer-public__card helfer-public__form"
-				@submit.prevent="submit">
-				<h3>{{ t('helfer', 'Eintragen') }}</h3>
-				<p class="helfer-public__hint">
-					{{ selected.length === 0
-						? t('helfer', 'Wähle oben eine oder mehrere Schichten aus.')
-						: (selected.length === 1 ? t('helfer', '1 Schicht ausgewählt') : t('helfer', '{n} Schichten ausgewählt', { n: selected.length })) }}
-				</p>
-				<NcTextField v-model="form.name"
-					:label="t('helfer', 'Dein Name')"
-					required
-					autocomplete="name" />
-				<NcTextField v-if="event.askEmail"
-					v-model="form.email"
-					type="email"
-					:label="t('helfer', 'E-Mail-Adresse')"
-					required
-					autocomplete="email" />
-				<NcTextField v-if="event.askPhone"
-					v-model="form.phone"
-					type="tel"
-					:label="t('helfer', 'Telefon (optional)')"
-					autocomplete="tel" />
-				<template v-if="event.askGroup">
-					<label v-if="event.groupOptions.length > 0" class="helfer-public__label">
-						{{ t('helfer', 'Gruppe / Abteilung / Verein') }}
-						<select v-model="form.groupName" required>
-							<option value="" disabled>{{ t('helfer', 'Bitte auswählen') }}</option>
-							<option v-for="option in event.groupOptions" :key="option" :value="option">{{ option }}</option>
-						</select>
-					</label>
-					<NcTextField v-else
-						v-model="form.groupName"
-						:label="t('helfer', 'Gruppe / Abteilung / Verein')"
-						required />
-				</template>
-				<NcTextField v-for="question in event.questions"
-					:key="question.id"
-					v-model="form.answers[question.id]"
-					:label="question.label + (question.required ? '' : ' ' + t('helfer', '(optional)'))"
-					:required="question.required" />
-				<NcTextField v-model="form.comment" :label="t('helfer', 'Kommentar (optional)')" />
-				<NcButton variant="primary"
-					type="submit"
-					:disabled="submitting || selected.length === 0"
-					wide>
-					{{ t('helfer', 'Verbindlich eintragen') }}
-				</NcButton>
-			</form>
-
-			<div v-if="writable && selected.length > 0" class="helfer-public__bar">
-				<span>{{ selected.length === 1 ? t('helfer', '1 Schicht ausgewählt') : t('helfer', '{n} Schichten ausgewählt', { n: selected.length }) }}</span>
-				<NcButton variant="primary" @click="scrollToForm">
-					<template #icon>
-						<NcIconSvgWrapper :path="mdiEmailOutline" />
-					</template>
-					{{ t('helfer', 'Weiter zum Eintragen') }}
-				</NcButton>
-			</div>
 		</template>
 	</div>
 </template>
@@ -333,7 +339,7 @@ onMounted(load)
 	max-width: 760px;
 	width: 100%;
 	margin: 0 auto;
-	padding: 16px 12px 96px;
+	padding: 16px 12px 48px;
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
@@ -363,19 +369,19 @@ onMounted(load)
 .helfer-public h3 {
 	font-weight: bold;
 	font-size: 1.15em;
-	margin: 0 0 8px;
-}
-
-.helfer-public__day > h3 {
-	margin: 16px 4px 8px;
-	color: var(--color-primary-element-text, #fff);
-	text-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+	margin: 0;
 }
 
 .helfer-public__day {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+}
+
+.helfer-public__day > h3 {
+	margin: 16px 4px 0;
+	color: var(--color-background-plain-text, #fff);
+	text-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
 }
 
 .helfer-public__description {
@@ -387,15 +393,39 @@ onMounted(load)
 	color: var(--color-text-maxcontrast);
 }
 
-.helfer-public__facts li, .helfer-public__mine li {
+.helfer-public__facts li {
 	display: flex;
 	align-items: center;
 	gap: 6px;
 	padding: 2px 0;
 }
 
+.helfer-public__mine-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-bottom: 8px;
+}
+
+.helfer-public__mine li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 0;
+	border-top: 1px solid var(--color-border);
+}
+
 .helfer-public__mine-text {
 	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.helfer-public__mine-text span, .helfer-public__shift header span, .helfer-public__hint, .helfer-public__free {
+	color: var(--color-text-maxcontrast);
 }
 
 .helfer-public__shift header {
@@ -407,80 +437,28 @@ onMounted(load)
 	margin-bottom: 4px;
 }
 
-.helfer-public__shift header span, .helfer-public__hint, .helfer-public__free {
-	color: var(--color-text-maxcontrast);
-}
-
 .helfer-public__row {
 	border-top: 1px solid var(--color-border);
-	padding: 6px 0;
-}
-
-.helfer-public__row--full .helfer-public__station {
-	color: var(--color-text-maxcontrast);
-}
-
-.helfer-public__select {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
-	min-height: 44px;
+	padding: 8px 0;
 }
 
 .helfer-public__station {
-	padding-inline-start: 4px;
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
 }
 
 .helfer-public__hint {
-	margin: 0;
+	margin: 4px 0 0;
 	font-size: 0.95em;
 }
 
 .helfer-public__names {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 4px;
-}
-
-.helfer-public__names li {
-	padding: 2px 10px;
-	border-radius: var(--border-radius-pill);
-	background: var(--color-background-dark);
-}
-
-.helfer-public__names li.helfer-public__names--mine {
-	background: var(--color-primary-element-light);
-	color: var(--color-primary-element-light-text);
-}
-
-.helfer-public__form {
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-}
-
-.helfer-public__label {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-
-.helfer-public__label select {
-	width: 100%;
-}
-
-.helfer-public__bar {
-	position: fixed;
-	bottom: 0;
-	inset-inline: 0;
-	display: flex;
-	justify-content: center;
 	align-items: center;
-	gap: 16px;
-	padding: 10px 16px;
-	background: var(--color-main-background);
-	box-shadow: 0 -2px 10px var(--color-box-shadow);
-	z-index: 1000;
+	gap: 6px;
+	margin-top: 6px;
 }
 </style>

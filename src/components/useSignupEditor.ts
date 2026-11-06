@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { showError } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
 import { adminApi, errorMessage } from '../api.ts'
+import { confirmAction } from '../confirm.ts'
 import type { FullEvent, Signup } from '../types.ts'
 
 /**
@@ -42,8 +43,7 @@ export function useSignupEditor(getData: () => FullEvent, emitUpdate: (data: Ful
 		if (!target) {
 			return
 		}
-		// eslint-disable-next-line no-alert
-		if (!window.confirm(t('helfer', '{name} austragen?', { name: target.name ?? '' }))) {
+		if (!await confirmAction(t('helfer', 'Austragen'), t('helfer', '{name} austragen?', { name: target.name ?? '' }), t('helfer', 'Austragen'))) {
 			return
 		}
 		try {
