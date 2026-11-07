@@ -1,5 +1,5 @@
 import { getFilePickerBuilder } from '@nextcloud/dialogs'
-import { t } from '@nextcloud/l10n'
+import { t } from './l10n.ts'
 
 /**
  * Let the user pick a folder in their Nextcloud files. Resolves to null when cancelled.

@@ -22,8 +22,10 @@ use OCA\Helfer\Db\StationMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Files\Folder;
+use OCP\Files\InvalidPathException;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException as FileNotFoundException;
+use OCP\Files\NotPermittedException;
 use OCP\IDBConnection;
 use OCP\IGroupManager;
 use OCP\IL10N;
@@ -593,10 +595,16 @@ class EventService {
 
 	/** @throws ValidationException */
 	public function assertFolderWritable(string $uid, string $path): Folder {
+		// No "..", NUL or control characters: the folder must lie inside the user's own files.
+		if (preg_match('#(^|/)\.\.(/|$)|[\x00-\x1F]#', $path) === 1) {
+			throw new ValidationException($this->l->t('Ungültiger Ordnerpfad.'));
+		}
 		try {
 			$node = $this->rootFolder->getUserFolder($uid)->get($path);
 		} catch (FileNotFoundException) {
 			throw new ValidationException($this->l->t('Der Export-Ordner „%s“ wurde nicht gefunden.', [$path]));
+		} catch (NotPermittedException|InvalidPathException) {
+			throw new ValidationException($this->l->t('Ungültiger Ordnerpfad.'));
 		}
 		if (!$node instanceof Folder) {
 			throw new ValidationException($this->l->t('„%s“ ist kein Ordner.', [$path]));

@@ -14,6 +14,8 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IDBConnection;
 use OCP\IL10N;
+use OCP\Lock\ILockingProvider;
+use OCP\Lock\LockedException;
 use OCP\Mail\IMailer;
 use OCP\Security\ISecureRandom;
 
@@ -27,7 +29,38 @@ class SignupService {
 		private IMailer $mailer,
 		private IDBConnection $db,
 		private IL10N $l,
+		private ILockingProvider $locking,
 	) {
+	}
+
+	/**
+	 * Run $callback while holding an exclusive lock for the event, so that two people
+	 * signing up at the same moment cannot both take the last free place.
+	 *
+	 * @template T
+	 * @param callable(): T $callback
+	 * @return T
+	 * @throws ValidationException
+	 */
+	private function withEventLock(Event $event, callable $callback): mixed {
+		$key = 'helfer/event/' . $event->getId();
+		$acquired = false;
+		for ($i = 0; $i < 50 && !$acquired; $i++) {
+			try {
+				$this->locking->acquireLock($key, ILockingProvider::LOCK_EXCLUSIVE);
+				$acquired = true;
+			} catch (LockedException) {
+				usleep(100000);
+			}
+		}
+		if (!$acquired) {
+			throw new ValidationException($this->l->t('Gerade tragen sich viele gleichzeitig ein. Bitte versuche es gleich noch einmal.'));
+		}
+		try {
+			return $callback();
+		} finally {
+			$this->locking->releaseLock($key, ILockingProvider::LOCK_EXCLUSIVE);
+		}
 	}
 
 	/**
@@ -43,7 +76,7 @@ class SignupService {
 		if ($slotIds === []) {
 			throw new ValidationException($this->l->t('Bitte mindestens eine Schicht auswählen.'));
 		}
-		if (count($slotIds) > 50) {
+		if (count($slotIds) > 10) {
 			throw new ValidationException($this->l->t('Zu viele Schichten auf einmal ausgewählt.'));
 		}
 		$fields = $this->validateFields($event, $data, false);
@@ -52,39 +85,42 @@ class SignupService {
 		$hashed = hash('sha256', $plainToken);
 		$now = $this->time->getTime();
 
-		$this->db->beginTransaction();
-		try {
-			$created = [];
-			$existing = $this->signups->findByEvent($event->getId());
-			foreach ($slotIds as $slotId) {
-				$slot = $this->findSlot($event, $slotId);
-				$taken = 0;
-				foreach ($existing as $signup) {
-					if ($signup->getSlotId() !== $slot->getId()) {
-						continue;
+		$created = $this->withEventLock($event, function () use ($event, $slotIds, $fields, $hashed, $deviceHash, $now): array {
+			$this->db->beginTransaction();
+			try {
+				$created = [];
+				$existing = $this->signups->findByEvent($event->getId());
+				foreach ($slotIds as $slotId) {
+					$slot = $this->findSlot($event, $slotId);
+					$taken = 0;
+					foreach ($existing as $signup) {
+						if ($signup->getSlotId() !== $slot->getId()) {
+							continue;
+						}
+						$taken++;
+						if (mb_strtolower($signup->getName()) === mb_strtolower($fields['name'])) {
+							throw new ValidationException($this->l->t('%s ist in dieser Schicht bereits eingetragen.', [$fields['name']]));
+						}
 					}
-					$taken++;
-					if (mb_strtolower($signup->getName()) === mb_strtolower($fields['name'])) {
-						throw new ValidationException($this->l->t('%s ist in dieser Schicht bereits eingetragen.', [$fields['name']]));
+					if ($taken >= $slot->getNeeded()) {
+						throw new ValidationException($this->l->t('Eine der ausgewählten Schichten ist leider schon voll. Bitte Seite neu laden.'));
 					}
+					$signup = new Signup();
+					$signup->setEventId($event->getId());
+					$signup->setSlotId($slot->getId());
+					$this->applyFields($signup, $fields);
+					$signup->setEditToken($hashed);
+					$signup->setDeviceHash($deviceHash);
+					$signup->setCreatedAt($now);
+					$created[] = $this->signups->insert($signup);
 				}
-				if ($taken >= $slot->getNeeded()) {
-					throw new ValidationException($this->l->t('Eine der ausgewählten Schichten ist leider schon voll. Bitte Seite neu laden.'));
-				}
-				$signup = new Signup();
-				$signup->setEventId($event->getId());
-				$signup->setSlotId($slot->getId());
-				$this->applyFields($signup, $fields);
-				$signup->setEditToken($hashed);
-				$signup->setDeviceHash($deviceHash);
-				$signup->setCreatedAt($now);
-				$created[] = $this->signups->insert($signup);
+				$this->db->commit();
+			} catch (\Throwable $e) {
+				$this->db->rollBack();
+				throw $e;
 			}
-			$this->db->commit();
-		} catch (\Throwable $e) {
-			$this->db->rollBack();
-			throw $e;
-		}
+			return $created;
+		});
 		$this->touch($event);
 		return ['signups' => $created, 'editToken' => $plainToken];
 	}

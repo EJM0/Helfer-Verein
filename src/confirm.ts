@@ -1,5 +1,5 @@
 import { showConfirmation } from '@nextcloud/dialogs'
-import { t } from '@nextcloud/l10n'
+import { t } from './l10n.ts'
 
 /**
  * Nextcloud styled yes/no question. Resolves to false when the dialog is closed.

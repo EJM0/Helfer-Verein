@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { showError } from '@nextcloud/dialogs'
-import { t } from '@nextcloud/l10n'
+import { t } from '../l10n.ts'
 import { adminApi, errorMessage } from '../api.ts'
 import { confirmAction } from '../confirm.ts'
 import type { FullEvent, Signup } from '../types.ts'

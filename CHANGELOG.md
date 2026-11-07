@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2026-11-07
+
+### Security
+
+- Geschlossener Link (Option „Link schließen“): Die öffentliche Schnittstelle liefert nach dem Schließungsdatum keine Schichten, Namen und Spenden mehr; der Kalender-Download ist gesperrt
+- Überbuchung bei gleichzeitigen Eintragungen verhindert (exklusive Sperre pro Umfrage beim Eintragen)
+- Höchstens 10 Schichten pro öffentlicher Anfrage (vorher 50), erschwert Massen-Eintragungen
+- Abhängigkeit `minimatch` (über `webdav`) auf eine Version ohne bekannte Schwachstelle angehoben (GHSA-g3hv-75wg-m249)
+
+### Fixed
+
+- Ungültige Ordnerpfade (z. B. mit `..`) beim Export führen zu einer verständlichen Meldung statt zu einem Serverfehler
+- Sonderzeichen wie „&“ werden in der Oberfläche nicht mehr als „&amp;“ angezeigt
+
 ## [1.7.0] - 2026-11-06
 
 ### Added

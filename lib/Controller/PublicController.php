@@ -148,6 +148,10 @@ class PublicController extends Controller {
 			$response->throttle();
 			return $response;
 		}
+		if ($event->isClosed($this->time->getTime())) {
+			// A closed link no longer reveals the plan.
+			return new JSONResponse(['message' => 'Not found'], Http::STATUS_NOT_FOUND);
+		}
 		$slotIds = null;
 		if ($slots !== '') {
 			$slotIds = array_values(array_unique(array_map('intval', array_filter(explode(',', $slots), 'is_numeric'))));
@@ -253,8 +257,42 @@ class PublicController extends Controller {
 	}
 
 	private function publicData(Event $event): array {
-		$full = $this->events->getFull($event);
 		$now = $this->time->getTime();
+		if ($event->isClosed($now)) {
+			// Closed link: only say so, without any plan, names or donations.
+			return [
+				'event' => [
+					'title' => $event->getTitle(),
+					'description' => '',
+					'location' => '',
+					'contact' => '',
+					'contactEmail' => '',
+					'organizer' => '',
+					'startDate' => null,
+					'timezone' => $event->getTimezone(),
+					'endDate' => null,
+					'closeDate' => null,
+					'ended' => true,
+					'signupDeadline' => null,
+					'signupClosed' => true,
+					'closed' => true,
+					'askEmail' => false,
+					'emailRequired' => false,
+					'askPhone' => false,
+					'askGroup' => false,
+					'groupOptions' => [],
+					'questions' => [],
+					'publicNames' => false,
+				],
+				'shifts' => [],
+				'stations' => [],
+				'slots' => [],
+				'signups' => [],
+				'donationLists' => [],
+				'donations' => [],
+			];
+		}
+		$full = $this->events->getFull($event);
 		$withNames = (bool)$event->getPublicNames();
 		return [
 			'event' => [

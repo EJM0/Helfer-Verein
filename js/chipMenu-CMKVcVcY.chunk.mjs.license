@@ -108,7 +108,7 @@ This file is generated from multiple sources. Included packages:
 	- version: 8.2.4
 	- license: MIT
 - helfer
-	- version: 1.6.0
+	- version: 1.7.0
 	- license: AGPL-3.0-or-later
 - semver
 	- version: 7.8.6

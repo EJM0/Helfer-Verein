@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { loadState } from '@nextcloud/initial-state'
-import { t } from '@nextcloud/l10n'
+import { t } from '../l10n.ts'
 import { generateUrl } from '@nextcloud/router'
 import NcActionButton from '@nextcloud/vue/components/NcActionButton'
 import NcActionLink from '@nextcloud/vue/components/NcActionLink'
@@ -448,7 +448,7 @@ onMounted(load)
 				</article>
 			</section>
 
-			<p v-if="days.length === 0" class="helfer-public__card">
+			<p v-if="days.length === 0 && !event.closed" class="helfer-public__card">
 				{{ t('helfer', 'Es wurden noch keine Schichten eingetragen.') }}
 			</p>
 			<p v-else-if="visibleDays.length === 0" class="helfer-public__card">

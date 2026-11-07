@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { t } from '@nextcloud/l10n'
+import { t } from '../l10n.ts'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcDateTimePickerNative from '@nextcloud/vue/components/NcDateTimePickerNative'
