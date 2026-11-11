@@ -91,7 +91,7 @@ class Event extends Entity implements JsonSerializable {
 	protected $exportedAt;
 	protected $exportPath;
 	protected $askEmail = 1;
-	protected $emailRequired = 0;
+	protected $emailRequired = 1;
 	protected $askPhone = 0;
 	protected $askGroup = 0;
 	protected $groupOptions;

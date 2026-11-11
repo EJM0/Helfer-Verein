@@ -150,6 +150,9 @@ class EventService {
 		$event->setOwnerUid($uid);
 		$event->setCreatedAt($now);
 		$event->setToken($this->generateToken());
+		// E-mail address is asked and required by default; can be switched off in the settings.
+		$event->setAskEmail(1);
+		$event->setEmailRequired(1);
 		$this->apply($event, $data, true);
 		$event->setUpdatedAt($now);
 		return $this->events->insert($event);

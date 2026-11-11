@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2026-11-11
+
+### Changed
+
+- Button „E-Mail an Helfer“ direkt neben „Exportieren“ (statt im Menü)
+- Neue Umfragen: E-Mail-Adresse ist standardmäßig Pflicht (in den Einstellungen abschaltbar); bestehende Umfragen bleiben unverändert
+
+### Fixed
+
+- Das Einstellungsformular wurde seit 1.8.0 zusätzlich unter den Tabs Einteilung, Schichten & Stände und Helferliste angezeigt
+
 ## [1.8.0] - 2026-11-11
 
 ### Added

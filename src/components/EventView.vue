@@ -195,6 +195,12 @@ function openExportedFile() {
 				</p>
 			</div>
 			<div class="event-view__export">
+				<NcButton @click="showMail = true">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiEmailOutline" />
+					</template>
+					{{ t('helfer', 'E-Mail an Helfer') }}
+				</NcButton>
 				<NcButton :disabled="exporting" @click="exportNow(false)">
 					<template #icon>
 						<NcIconSvgWrapper :path="mdiTableArrowRight" />
@@ -213,12 +219,6 @@ function openExportedFile() {
 							<NcIconSvgWrapper :path="mdiDownload" />
 						</template>
 						{{ t('helfer', 'Excel-Datei herunterladen') }}
-					</NcActionButton>
-					<NcActionButton close-after-click @click="showMail = true">
-						<template #icon>
-							<NcIconSvgWrapper :path="mdiEmailOutline" />
-						</template>
-						{{ t('helfer', 'E-Mail an Helfer …') }}
 					</NcActionButton>
 					<NcActionLink :href="adminApi.calendarUrl(event.id)" download>
 						<template #icon>
@@ -359,7 +359,6 @@ function openExportedFile() {
 			:data="data"
 			@update="(d) => emit('update', d)"
 			@mail="showMail = true" />
-		<MailDialog v-if="showMail" :data="data" @close="showMail = false" />
 		<DonationEditor v-else-if="tab === 'donations'" :data="data" @update="(d) => emit('update', d)" />
 		<SharePanel v-else-if="tab === 'share'"
 			:data="data"
@@ -373,6 +372,7 @@ function openExportedFile() {
 				</NcButton>
 			</div>
 		</form>
+		<MailDialog v-if="showMail" :data="data" @close="showMail = false" />
 	</div>
 </template>
 

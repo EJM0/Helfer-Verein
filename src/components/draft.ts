@@ -18,7 +18,7 @@ export function emptyDraft(): SettingsDraft {
 		closeAction: 'close',
 		exportFolder: '',
 		askEmail: true,
-		emailRequired: false,
+		emailRequired: true,
 		askPhone: false,
 		askGroup: false,
 		groupOptions: '',
