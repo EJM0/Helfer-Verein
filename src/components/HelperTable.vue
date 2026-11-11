@@ -9,10 +9,10 @@ import { slotOptions } from './slots.ts'
 import { useSignupEditor } from './useSignupEditor.ts'
 import { formatDay, formatRange, hours } from '../time.ts'
 import type { FullEvent } from '../types.ts'
-import { mdiAccountPlus, mdiDelete, mdiPencil } from '../icons.ts'
+import { mdiAccountPlus, mdiDelete, mdiPencil, mdiEmailOutline } from '../icons.ts'
 
 const props = defineProps<{ data: FullEvent }>()
-const emit = defineEmits<{ update: [data: FullEvent] }>()
+const emit = defineEmits<{ update: [data: FullEvent], mail: [] }>()
 
 const tz = computed(() => props.data.event.timezone)
 const editor = useSignupEditor(() => props.data, (d) => emit('update', d))
@@ -61,6 +61,12 @@ const totalHours = computed(() => people.value.reduce((sum, p) => sum + p.second
 					{{ t('helfer', 'Personen') }}
 				</NcButton>
 			</div>
+			<NcButton v-if="data.signups.length > 0 || data.donations.length > 0" @click="emit('mail')">
+				<template #icon>
+					<NcIconSvgWrapper :path="mdiEmailOutline" />
+				</template>
+				{{ t('helfer', 'E-Mail an Helfer') }}
+			</NcButton>
 			<NcButton v-if="options.length > 0" @click="editor.add(options[0].slot.id)">
 				<template #icon>
 					<NcIconSvgWrapper :path="mdiAccountPlus" />

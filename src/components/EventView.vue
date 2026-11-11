@@ -15,6 +15,7 @@ import StructureEditor from './StructureEditor.vue'
 import HelperTable from './HelperTable.vue'
 import DonationEditor from './DonationEditor.vue'
 import SharePanel from './SharePanel.vue'
+import MailDialog from './MailDialog.vue'
 import QrCodeDialog from './QrCodeDialog.vue'
 import SettingsFields from './SettingsFields.vue'
 import { draftFromEvent, draftToPayload } from './draft.ts'
@@ -25,7 +26,7 @@ import { formatDateTime } from '../time.ts'
 import type { FullEvent } from '../types.ts'
 import {
 	mdiAccountGroup, mdiCalendarClock, mdiCalendarExport, mdiGift, mdiShareVariant, mdiCog, mdiContentCopy, mdiDownload, mdiFolderOutline, mdiLinkVariant,
-	mdiLinkVariantOff, mdiOpenInNew, mdiQrcode, mdiRefresh, mdiTableArrowRight, mdiStorefrontOutline,
+	mdiLinkVariantOff, mdiOpenInNew, mdiQrcode, mdiRefresh, mdiTableArrowRight, mdiStorefrontOutline, mdiEmailOutline,
 } from '../icons.ts'
 
 const props = defineProps<{ data: FullEvent }>()
@@ -39,6 +40,7 @@ const tz = computed(() => event.value.timezone)
 const draft = ref(draftFromEvent(props.data.event))
 const saving = ref(false)
 const exporting = ref(false)
+const showMail = ref(false)
 const qrOpen = ref(false)
 watch(() => props.data.event.updatedAt, () => {
 	if (!saving.value) {
@@ -212,6 +214,12 @@ function openExportedFile() {
 						</template>
 						{{ t('helfer', 'Excel-Datei herunterladen') }}
 					</NcActionButton>
+					<NcActionButton close-after-click @click="showMail = true">
+						<template #icon>
+							<NcIconSvgWrapper :path="mdiEmailOutline" />
+						</template>
+						{{ t('helfer', 'E-Mail an Helfer …') }}
+					</NcActionButton>
 					<NcActionLink :href="adminApi.calendarUrl(event.id)" download>
 						<template #icon>
 							<NcIconSvgWrapper :path="mdiCalendarExport" />
@@ -347,7 +355,11 @@ function openExportedFile() {
 			@update="(d) => emit('update', d)"
 			@edit-structure="tab = 'structure'" />
 		<StructureEditor v-else-if="tab === 'structure'" :data="data" @update="(d) => emit('update', d)" />
-		<HelperTable v-else-if="tab === 'helpers'" :data="data" @update="(d) => emit('update', d)" />
+		<HelperTable v-else-if="tab === 'helpers'"
+			:data="data"
+			@update="(d) => emit('update', d)"
+			@mail="showMail = true" />
+		<MailDialog v-if="showMail" :data="data" @close="showMail = false" />
 		<DonationEditor v-else-if="tab === 'donations'" :data="data" @update="(d) => emit('update', d)" />
 		<SharePanel v-else-if="tab === 'share'"
 			:data="data"

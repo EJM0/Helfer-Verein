@@ -4,6 +4,13 @@ import type { FullEvent, HelferEvent, PublicData, Sharee } from './types.ts'
 
 const base = (path: string) => generateUrl('/apps/helfer' + path)
 
+export interface MailAccount {
+	providerId: string
+	serviceId: string
+	label: string
+	address: string
+}
+
 export function errorMessage(error: unknown, fallback: string): string {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const message = (error as any)?.response?.data?.message
@@ -64,6 +71,12 @@ export const adminApi = {
 	},
 	async deleteSignup(id: number, signupId: number): Promise<FullEvent> {
 		return (await axios.delete(base(`/api/events/${id}/signups/${signupId}`))).data
+	},
+	async mailAccounts(): Promise<MailAccount[]> {
+		return (await axios.get(base('/api/mail/accounts'))).data
+	},
+	async sendMail(id: number, data: { providerId: string, serviceId: string, emails: string[], subject: string, body: string }): Promise<{ sent: number }> {
+		return (await axios.post(base(`/api/events/${id}/mail`), data)).data
 	},
 	async sharees(search: string): Promise<Sharee[]> {
 		return (await axios.get(base('/api/sharees'), { params: { search } })).data

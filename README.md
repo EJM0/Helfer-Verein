@@ -14,6 +14,9 @@ ganz ohne Nextcloud-Konto.
 - Helfer selbst eintragen, verschieben, austragen und **Rollen** vergeben (z. B. Schichtleitung, Kasse)
 - Abfrage von E-Mail, Telefon, Gruppe/Abteilung/Verein und **eigenen Fragen** (z. B. T-Shirt-Größe)
 - **Helferliste** nach Einsätzen oder Personen inkl. Stundensumme
+- **E-Mail an Helfer:** an alle, einzelne oder z. B. alle einer Schicht / eines Standes / alle Spender.
+  Ist in der Nextcloud-**Mail-App** ein Konto eingerichtet, sendet die App direkt darüber (Nextcloud 30+
+  Mail-Provider-Schnittstelle); sonst öffnet sich das **Standard-E-Mail-Programm**. Empfänger stehen immer im BCC
 - **Spendenlisten** anlegen und Einträge bearbeiten (Tab „Spenden“)
 - Alle Schichten als Kalenderdatei (`.ics`) herunterladen
 - Öffentlichen Link als **QR-Code** mit Vereinslogo in der Mitte anzeigen und als PNG herunterladen

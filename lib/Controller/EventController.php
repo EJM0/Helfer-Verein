@@ -9,6 +9,7 @@ use OCA\Helfer\Service\CalendarService;
 use OCA\Helfer\Service\DonationService;
 use OCA\Helfer\Service\EventService;
 use OCA\Helfer\Service\ExportService;
+use OCA\Helfer\Service\HelperMailService;
 use OCA\Helfer\Service\ShareService;
 use OCA\Helfer\Service\SignupService;
 use OCA\Helfer\Service\ValidationException;
@@ -17,6 +18,7 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
+use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\AppFramework\Http\Response;
@@ -41,6 +43,7 @@ class EventController extends Controller {
 		private ExportService $export,
 		private CalendarService $calendar,
 		private ShareService $shares,
+		private HelperMailService $mail,
 		private IUserSession $userSession,
 		private IURLGenerator $urlGenerator,
 		private IL10N $l,
@@ -252,6 +255,27 @@ class EventController extends Controller {
 			$event = $this->events->getForUser($id, $this->uid());
 			$this->signups->adminDelete($event, $signupId);
 			return $this->full($event);
+		});
+	}
+
+	// ---- e-mail to helpers --------------------------------------------------
+
+	/** Mail accounts of the current user in the Nextcloud Mail app (empty: use the local mail program). */
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'GET', url: '/api/mail/accounts')]
+	public function mailAccounts(): JSONResponse {
+		return $this->handle(fn () => $this->mail->accounts($this->uid()));
+	}
+
+	/** @param array<array-key, mixed> $emails recipient addresses (only those of this survey are used) */
+	#[NoAdminRequired]
+	#[UserRateLimit(limit: 20, period: 3600)]
+	#[FrontpageRoute(verb: 'POST', url: '/api/events/{id}/mail', requirements: ['id' => '\d+'])]
+	public function sendMail(int $id, string $providerId = '', string $serviceId = '', array $emails = [], string $subject = '', string $body = ''): JSONResponse {
+		return $this->handle(function () use ($id, $providerId, $serviceId, $emails, $subject, $body) {
+			$event = $this->events->getForUser($id, $this->uid());
+			$count = $this->mail->send($event, $this->uid(), $providerId, $serviceId, array_values(array_map(static fn (mixed $e): string => is_scalar($e) ? (string)$e : '', $emails)), $subject, $body);
+			return ['sent' => $count];
 		});
 	}
 

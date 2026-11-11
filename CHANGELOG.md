@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-11-11
+
+### Added
+
+- E-Mail an Helfer (Helferliste → „E-Mail an Helfer“ oder Menü …): an alle, einzelne oder nach Schicht/Stand/Spendern ausgewählte Helfer und Spender
+  - Ist in der Nextcloud-Mail-App ein Konto eingerichtet, wird direkt darüber gesendet (Absender wählbar bei mehreren Konten)
+  - Sonst öffnet sich das Standard-E-Mail-Programm mit allen Adressen im BCC; bei sehr vielen Empfängern werden die Adressen in die Zwischenablage kopiert
+  - Empfänger stehen immer im BCC und sehen die Adressen der anderen nicht
+
 ## [1.7.1] - 2026-11-07
 
 ### Security
